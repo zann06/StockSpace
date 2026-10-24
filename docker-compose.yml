@@ -1,0 +1,40 @@
+# StockSpace local development stack.
+#
+# Phase 0–1 (current): `db` (PostgreSQL for Phase 2) and `web` (built frontend
+# served by nginx). The API service is added in Phase 2.
+#
+# Usage:
+#   docker compose up --build       # build and start everything
+#   docker compose up db            # database only (for local API development)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stockspace
+      POSTGRES_PASSWORD: stockspace
+      POSTGRES_DB: stockspace
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U stockspace -d stockspace']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
