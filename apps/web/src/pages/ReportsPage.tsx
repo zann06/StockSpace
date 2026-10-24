@@ -1,24 +1,61 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Download, FileBarChart } from 'lucide-react'
 
-import { useDashboardSummary, useMovements, useWarehouseData } from '@/api/hooks'
+import {
+  downloadReportCsv,
+  useDashboardSummary,
+  useLowStockReport,
+  useMovementReport,
+  useProductsList,
+  useWarehouseData,
+  type MovementReportParams,
+} from '@/api/hooks'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { PageHeader } from '@/components/common/PageHeader'
 import { MovementChartCard } from '@/components/dashboard/MovementChartCard'
+import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { formatNumber } from '@/lib/format'
-import { locationQuantity, locationStatus } from '@/lib/stats'
+import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/format'
 
-/** Reports — live low-stock and per-location utilization from persisted data.
- * CSV export and date-range filters arrive in Phase 4. */
+type ReportType = 'ALL' | 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
+
+/** Reports — low-stock, movement history with filters, and CSV export. */
 export function ReportsPage() {
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [type, setType] = useState<ReportType>('ALL')
+  const [productId, setProductId] = useState('')
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<string | null>(null)
+
   const summaryQuery = useDashboardSummary()
-  const { locations, balances, products, isLoading: layoutLoading } = useWarehouseData()
-  const movementsQuery = useMovements({ perPage: 100 })
+  const lowStockQuery = useLowStockReport()
+  const productsQuery = useProductsList()
+  const { isLoading: layoutLoading } = useWarehouseData()
+
+  const params: MovementReportParams = {
+    ...(from ? { from: new Date(`${from}T00:00:00`).toISOString() } : {}),
+    ...(to ? { to: new Date(`${to}T23:59:59`).toISOString() } : {}),
+    ...(type !== 'ALL' ? { type } : {}),
+    ...(productId ? { productId } : {}),
+  }
+  const movementsQuery = useMovementReport(params)
+  const movements = movementsQuery.data?.data ?? []
+
+  const exportCsv = async (report: 'low-stock' | 'movements') => {
+    setExportError(null)
+    setExporting(report)
+    try {
+      await downloadReportCsv(report, report === 'movements' ? params : {})
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Ekspor gagal.')
+    } finally {
+      setExporting(null)
+    }
+  }
 
   const summary = summaryQuery.data?.data
-  const movements = movementsQuery.data?.data ?? []
-  const totalMovements = movementsQuery.data?.pagination.total ?? 0
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,180 +64,287 @@ export function ReportsPage() {
         subtitle="Analisis pergerakan stok, produk menipis, dan sebaran inventaris — dari data tersimpan."
         meta={<DemoBadge />}
         actions={
-          <span className="flex items-center gap-1.5 rounded-control border border-dashed border-line px-3 py-2 text-xs font-semibold text-muted">
-            <Download aria-hidden className="h-3.5 w-3.5" />
-            Ekspor CSV — Fase 4
-          </span>
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void exportCsv('low-stock')}
+              disabled={exporting !== null || lowStockQuery.isLoading}
+              title="Unduh laporan stok menipis sebagai CSV"
+            >
+              <Download aria-hidden className="h-3.5 w-3.5" />
+              {exporting === 'low-stock' ? 'Menyiapkan…' : 'CSV Stok Menipis'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void exportCsv('movements')}
+              disabled={exporting !== null || movementsQuery.isLoading}
+              title="Unduh laporan pergerakan (dengan filter aktif) sebagai CSV"
+            >
+              <Download aria-hidden className="h-3.5 w-3.5" />
+              {exporting === 'movements' ? 'Menyiapkan…' : 'CSV Pergerakan'}
+            </Button>
+          </>
         }
       />
 
-      {summaryQuery.error ? (
-        <Card className="p-5">
-          <p className="text-sm font-bold text-ink">Gagal memuat laporan</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">{summaryQuery.error.message}</p>
-          <button
-            type="button"
-            onClick={() => void summaryQuery.refetch()}
-            className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
-          >
-            Coba lagi
-          </button>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <Card className="overflow-hidden">
-            <CardHeader
-              title="Laporan Stok Menipis"
-              subtitle={`${summary?.lowStock.length ?? 0} produk aktif di bawah ambang pesan ulang`}
-            />
-            <ul className="divide-y divide-line/70">
-              {(summary?.lowStock ?? []).map((item) => {
-                const ratio = item.reorderThreshold > 0 ? item.quantity / item.reorderThreshold : 1
-                return (
-                  <li key={item.id} className="flex items-center gap-3 px-5 py-3">
-                    <AlertTriangle
-                      aria-hidden
-                      className={`h-4 w-4 shrink-0 ${ratio < 0.5 ? 'text-danger' : 'text-warning'}`}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        to={`/inventory/products/${item.id}`}
-                        className="block truncate text-sm font-bold text-ink hover:text-primary"
-                      >
-                        {item.name}
-                      </Link>
-                      <p className="text-xs text-muted">
-                        Sisa {formatNumber(item.quantity)} · ambang{' '}
-                        {formatNumber(item.reorderThreshold)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-sm font-extrabold ${ratio < 0.5 ? 'text-danger' : 'text-warning'}`}
-                    >
-                      {formatNumber(item.reorderThreshold - item.quantity)}
-                    </span>
-                  </li>
-                )
-              })}
-              {(summary?.lowStock.length ?? 0) === 0 && !summaryQuery.isLoading ? (
-                <li className="px-5 py-6 text-center text-xs text-muted">
-                  Semua produk berada di atas ambang stok. 🎉
-                </li>
-              ) : null}
-            </ul>
-          </Card>
+      {exportError ? (
+        <p
+          role="alert"
+          className="rounded-control bg-danger-soft px-4 py-3 text-xs font-semibold text-danger"
+        >
+          {exportError}
+        </p>
+      ) : null}
 
-          <MovementChartCard series={summary?.movementSeries ?? []} />
-
-          <Card className="overflow-hidden xl:col-span-2">
-            <CardHeader
-              title="Inventaris per Lokasi"
-              subtitle="Sebaran kuantitas dan utilisasi kapasitas setiap lokasi"
-            />
-            {layoutLoading ? (
-              <p className="px-5 py-8 text-center text-sm font-semibold text-muted">
-                Memuat data lokasi…
-              </p>
-            ) : (
-              <div className="overflow-x-auto scroll-slim">
-                <table className="w-full min-w-[640px] text-left">
-                  <thead>
-                    <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
-                      <th scope="col" className="px-5 py-3">
-                        Lokasi
-                      </th>
-                      <th scope="col" className="px-5 py-3">
-                        Zona
-                      </th>
-                      <th scope="col" className="px-5 py-3">
-                        Status
-                      </th>
-                      <th scope="col" className="px-5 py-3 text-right">
-                        Terisi
-                      </th>
-                      <th scope="col" className="px-5 py-3 text-right">
-                        Kapasitas
-                      </th>
-                      <th scope="col" className="px-5 py-3">
-                        Utilisasi
-                      </th>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <Card className="overflow-hidden">
+          <CardHeader
+            title="Laporan Stok Menipis"
+            subtitle={
+              lowStockQuery.isLoading
+                ? 'Memuat…'
+                : `${lowStockQuery.data?.data.length ?? 0} produk aktif di bawah ambang pesan ulang`
+            }
+          />
+          {lowStockQuery.error ? (
+            <p className="px-5 py-6 text-xs leading-relaxed text-muted">
+              {lowStockQuery.error.message}
+            </p>
+          ) : (
+            <div className="max-h-96 overflow-y-auto scroll-slim">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
+                    <th scope="col" className="px-5 py-2.5">
+                      Produk
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      Stok
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      Kekurangan
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      Nilai Stok
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/70">
+                  {(lowStockQuery.data?.data ?? []).map((item) => (
+                    <tr key={item.id} className="hover:bg-canvas/70">
+                      <td className="px-5 py-2.5">
+                        <Link
+                          to={`/inventory/products/${item.id}`}
+                          className="block truncate text-sm font-bold text-ink hover:text-primary"
+                        >
+                          {item.name}
+                        </Link>
+                        <span className="text-xs text-muted">
+                          {item.sku}
+                          {item.category ? ` · ${item.category}` : ''}
+                        </span>
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-sm font-bold text-ink">
+                        {formatNumber(item.quantity)}/{formatNumber(item.reorderThreshold)}
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-sm font-extrabold text-danger">
+                        {formatNumber(item.shortfall)}
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-xs text-muted">
+                        {formatCurrency(item.stockValue)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line/70">
-                    {locations.map((location) => {
-                      const used = locationQuantity(location.id, balances)
-                      const status = locationStatus(location, balances, products)
-                      const ratio = location.capacity ? Math.min(1, used / location.capacity) : null
-                      return (
-                        <tr key={location.id} className="hover:bg-canvas/70">
-                          <td className="px-5 py-3 text-sm font-bold text-ink">{location.label}</td>
-                          <td className="px-5 py-3 text-sm text-muted">{location.zone}</td>
-                          <td className="px-5 py-3">
-                            <span
-                              className={`text-xs font-bold ${
-                                status === 'LOW'
-                                  ? 'text-danger'
-                                  : status === 'OCCUPIED'
-                                    ? 'text-success'
-                                    : 'text-muted'
-                              }`}
-                            >
-                              {status === 'LOW'
-                                ? 'Menipis'
-                                : status === 'OCCUPIED'
-                                  ? 'Terisi'
-                                  : 'Kosong'}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-right text-sm font-bold text-ink">
-                            {formatNumber(used)}
-                          </td>
-                          <td className="px-5 py-3 text-right text-sm text-muted">
-                            {location.capacity ? formatNumber(location.capacity) : '—'}
-                          </td>
-                          <td className="px-5 py-3">
-                            {ratio === null ? (
-                              <span className="text-xs text-muted">—</span>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-28 overflow-hidden rounded-full bg-canvas">
-                                  <div
-                                    className={`h-full rounded-full ${ratio > 0.85 ? 'bg-warning' : 'bg-primary'}`}
-                                    style={{ width: `${ratio * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs font-semibold text-muted">
-                                  {Math.round(ratio * 100)}%
-                                </span>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                  {!lowStockQuery.isLoading && (lowStockQuery.data?.data.length ?? 0) === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-6 text-center text-xs text-muted">
+                        Semua produk berada di atas ambang stok. 🎉
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        <MovementChartCard series={summary?.movementSeries ?? []} />
+
+        <Card className="overflow-hidden xl:col-span-2">
+          <CardHeader
+            title="Laporan Pergerakan Stok"
+            subtitle={`${formatNumber(movementsQuery.data?.pagination.total ?? 0)} transaksi cocok dengan filter`}
+          />
+          <div className="flex flex-wrap items-end gap-2.5 border-b border-line px-5 py-3">
+            <label className="flex flex-col gap-1 text-xs font-bold text-ink">
+              Dari
+              <input
+                type="date"
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
+                className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-ink">
+              Sampai
+              <input
+                type="date"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-ink">
+              Jenis
+              <select
+                value={type}
+                onChange={(event) => setType(event.target.value as ReportType)}
+                className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
+              >
+                <option value="ALL">Semua</option>
+                <option value="IN">Masuk</option>
+                <option value="OUT">Keluar</option>
+                <option value="TRANSFER">Transfer</option>
+                <option value="ADJUSTMENT">Penyesuaian</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-ink">
+              Produk
+              <select
+                value={productId}
+                onChange={(event) => setProductId(event.target.value)}
+                className="h-9 max-w-52 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
+              >
+                <option value="">Semua produk</option>
+                {(productsQuery.data?.data ?? []).map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {(from || to || type !== 'ALL' || productId) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFrom('')
+                  setTo('')
+                  setType('ALL')
+                  setProductId('')
+                }}
+                className="h-9 rounded-control px-3 text-xs font-bold text-primary hover:bg-primary-soft"
+              >
+                Reset filter
+              </button>
             )}
-          </Card>
-        </div>
-      )}
+          </div>
+
+          {movementsQuery.isLoading ? (
+            <p className="px-5 py-8 text-center text-sm font-semibold text-muted">
+              Memuat laporan…
+            </p>
+          ) : movementsQuery.error ? (
+            <p className="px-5 py-8 text-center text-xs leading-relaxed text-muted">
+              {movementsQuery.error.message}
+            </p>
+          ) : movements.length === 0 ? (
+            <p className="px-5 py-8 text-center text-xs text-muted">
+              Tidak ada transaksi yang cocok dengan filter.
+            </p>
+          ) : (
+            <div className="max-h-96 overflow-auto scroll-slim">
+              <table className="w-full min-w-[760px] text-left">
+                <thead>
+                  <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
+                    <th scope="col" className="px-5 py-2.5">
+                      Waktu
+                    </th>
+                    <th scope="col" className="px-5 py-2.5">
+                      Produk
+                    </th>
+                    <th scope="col" className="px-5 py-2.5">
+                      Jenis
+                    </th>
+                    <th scope="col" className="px-5 py-2.5">
+                      Dari → Ke
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      Qty
+                    </th>
+                    <th scope="col" className="px-5 py-2.5">
+                      Aktor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/70">
+                  {movements.map((movement) => (
+                    <tr key={movement.id} className="hover:bg-canvas/70">
+                      <td className="px-5 py-2.5 text-xs text-muted">
+                        {formatRelativeTime(movement.createdAt)}
+                      </td>
+                      <td className="max-w-[220px] px-5 py-2.5">
+                        <span className="block truncate text-sm font-bold text-ink">
+                          {movement.product.name}
+                        </span>
+                        <span className="text-xs text-muted">{movement.product.sku}</span>
+                      </td>
+                      <td className="px-5 py-2.5 text-xs font-bold text-muted">
+                        {movement.type === 'IN'
+                          ? 'Masuk'
+                          : movement.type === 'OUT'
+                            ? 'Keluar'
+                            : movement.type === 'TRANSFER'
+                              ? 'Transfer'
+                              : 'Penyesuaian'}
+                      </td>
+                      <td className="px-5 py-2.5 text-xs text-muted">
+                        {movement.sourceLocation?.code ?? '—'} →{' '}
+                        {movement.destinationLocation?.code ?? '—'}
+                      </td>
+                      <td
+                        className={`px-5 py-2.5 text-right text-sm font-extrabold ${
+                          movement.type === 'IN'
+                            ? 'text-success'
+                            : movement.type === 'OUT'
+                              ? 'text-danger'
+                              : movement.type === 'ADJUSTMENT'
+                                ? 'text-warning'
+                                : 'text-primary'
+                        }`}
+                      >
+                        {movement.type === 'ADJUSTMENT'
+                          ? `${movement.quantity > 0 ? '+' : '−'}${Math.abs(movement.quantity)}`
+                          : movement.type === 'OUT'
+                            ? `−${movement.quantity}`
+                            : movement.type === 'IN'
+                              ? `+${movement.quantity}`
+                              : movement.quantity}
+                      </td>
+                      <td className="px-5 py-2.5 text-xs text-muted">{movement.actor.name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
 
       <Card className="border-dashed bg-transparent shadow-none">
         <div className="flex flex-col items-center gap-1 px-6 py-8 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft">
             <FileBarChart aria-hidden className="h-6 w-6 text-primary" />
           </span>
-          <p className="mt-2 text-sm font-bold text-ink">
-            Filter rentang tanggal, aktor, dan ekspor CSV — Fase 4
+          <p className="mt-2 flex items-center gap-1.5 text-sm font-bold text-ink">
+            <AlertTriangle aria-hidden className="h-4 w-4 text-warning" />
+            Nilai stok = Σ(kuantitas × harga pokok) — perhitungan didokumentasikan di
+            docs/database.md
           </p>
           <p className="max-w-md text-xs leading-relaxed text-muted">
-            Riwayat lengkap ({formatNumber(totalMovements)} transaksi tercatat) sudah tersimpan
-            permanen di database — {movements.length} terbaru dapat dilihat di halaman{' '}
-            <Link to="/transactions" className="font-bold text-primary hover:underline">
-              Transaksi
-            </Link>
-            . Nilai inventory dihitung sebagai Σ(kuantitas × harga pokok) — lihat docs/database.md.
+            Laporan memuat hingga 50 transaksi per halaman{' '}
+            {layoutLoading ? '' : 'dan seluruh produk menipis'}; ekspor CSV mengunduh hingga 5.000
+            baris dengan filter yang sedang aktif.
           </p>
         </div>
       </Card>

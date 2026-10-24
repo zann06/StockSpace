@@ -1,24 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  Bell,
-  ChevronDown,
-  LogOut,
-  Menu,
-  Package,
-  Search,
-  Settings,
-  User,
-  Warehouse,
-} from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Menu, Package, Search, Settings, Warehouse } from 'lucide-react'
 
+import { useSession, useSignOut } from '@/api/auth'
 import {
   useNotifications,
   useProductsList,
   useMarkNotificationRead,
   useWarehouseData,
 } from '@/api/hooks'
-import { useWorkspace } from '@/api/workspace-provider'
+import { useWorkspace } from '@/api/workspace-context'
 import { Badge } from '@/components/ui/Badge'
 import { useDismiss } from '@/lib/hooks'
 
@@ -225,6 +216,19 @@ function ProfileMenu() {
   const containerRef = useRef<HTMLDivElement>(null)
   useDismiss(containerRef, () => setOpen(false), open)
   const { workspace } = useWorkspace()
+  const { data: sessionData } = useSession()
+  const signOut = useSignOut()
+  const navigate = useNavigate()
+  const user = sessionData?.user
+
+  const roleLabel =
+    workspace?.role === 'OWNER'
+      ? 'Owner'
+      : workspace?.role === 'ADMIN'
+        ? 'Admin'
+        : workspace?.role === 'STAFF'
+          ? 'Staf Gudang'
+          : 'Viewer'
 
   return (
     <div ref={containerRef} className="relative">
@@ -239,18 +243,13 @@ function ProfileMenu() {
           aria-hidden
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary text-xs font-bold text-white"
         >
-          {(workspace?.name ?? 'SS')
-            .split(' ')
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join('')
-            .toUpperCase()}
+          {user ? user.name.slice(0, 2).toUpperCase() : '··'}
         </span>
         <span className="hidden text-left sm:block">
           <span className="block max-w-[120px] truncate text-xs font-bold text-ink">
-            {workspace?.name ?? 'Memuat…'}
+            {user?.name ?? 'Memuat…'}
           </span>
-          <span className="block text-[11px] text-muted">Workspace</span>
+          <span className="block text-[11px] text-muted">{roleLabel}</span>
         </span>
         <ChevronDown aria-hidden className="h-4 w-4 text-muted" />
       </button>
@@ -258,23 +257,14 @@ function ProfileMenu() {
       {open ? (
         <div className="absolute top-12 right-0 z-40 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-lg">
           <div className="border-b border-line px-4 py-3">
-            <p className="text-sm font-bold text-ink">{workspace?.name ?? '—'}</p>
-            <p className="text-xs text-muted">
-              {workspace ? `${workspace.currency} · ${workspace.timezone}` : ''}
-            </p>
-            <Badge tone="primary" className="mt-2">
-              Akses Workspace
-            </Badge>
+            <p className="truncate text-sm font-bold text-ink">{user?.name ?? '—'}</p>
+            <p className="truncate text-xs text-muted">{user?.email ?? ''}</p>
+            <div className="mt-2 flex items-center gap-1.5">
+              <Badge tone="primary">{roleLabel}</Badge>
+              {workspace ? <Badge>{workspace.name}</Badge> : null}
+            </div>
           </div>
           <div className="p-1.5">
-            <button
-              type="button"
-              disabled
-              title="Profil pengguna tersedia setelah autentikasi diimplementasikan (Fase 4)."
-              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-semibold text-muted cursor-not-allowed"
-            >
-              <User aria-hidden className="h-4 w-4" /> Profil Saya
-            </button>
             <Link
               to="/settings"
               onClick={() => setOpen(false)}
@@ -284,11 +274,16 @@ function ProfileMenu() {
             </Link>
             <button
               type="button"
-              disabled
-              title="Keluar tersedia setelah autentikasi diimplementasikan (Fase 4)."
-              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-semibold text-muted cursor-not-allowed"
+              onClick={() => {
+                setOpen(false)
+                signOut.mutate(undefined, {
+                  onSuccess: () => navigate('/login', { replace: true }),
+                })
+              }}
+              disabled={signOut.isPending}
+              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-semibold text-danger hover:bg-danger-soft disabled:opacity-60"
             >
-              <LogOut aria-hidden className="h-4 w-4" /> Keluar
+              <LogOut aria-hidden className="h-4 w-4" /> {signOut.isPending ? 'Keluar…' : 'Keluar'}
             </button>
           </div>
         </div>

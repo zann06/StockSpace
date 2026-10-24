@@ -11,7 +11,13 @@ import { lowStockProducts, quantityByProduct } from '@/lib/stats'
 
 const NOW = new Date()
 
-const workspace = { id: 'ws-1', name: 'Toko TechNusa', currency: 'IDR', timezone: 'Asia/Jakarta' }
+const workspace = {
+  id: 'ws-1',
+  name: 'Toko TechNusa',
+  currency: 'IDR',
+  timezone: 'Asia/Jakarta',
+  role: 'OWNER',
+}
 const movements = buildMovements(NOW)
 const quantities = quantityByProduct(balances)
 const zoneIds = new Map(
@@ -119,8 +125,20 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
-/** Installs a fetch stub serving fixture data for the API endpoints the UI uses. */
-export function installFetchStub() {
+const sessionUser = {
+  id: 'user-1',
+  name: 'Farid Rizky',
+  email: 'farid@technusa.example',
+  emailVerified: true,
+  image: null,
+}
+
+let sessionEnabled = true
+
+/** Installs a fetch stub serving fixture data for the API endpoints the UI uses.
+ * Pass `{ session: false }` to simulate a signed-out visitor. */
+export function installFetchStub(options: { session?: boolean } = {}) {
+  sessionEnabled = options.session ?? true
   const stub = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof URL ? input : input)
     const method = init?.method ?? 'GET'
@@ -306,6 +324,31 @@ export function installFetchStub() {
         ],
         unread: 1,
       })
+    }
+
+    if (url.includes('/api/auth/get-session')) {
+      return jsonResponse(
+        sessionEnabled
+          ? {
+              session: { id: 'sess-1', expiresAt: '2099-01-01T00:00:00.000Z', userId: 'user-1' },
+              user: sessionUser,
+            }
+          : null
+      )
+    }
+
+    if (url.includes('/api/auth/sign-in/email')) {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { email?: string; password?: string }
+      if (body.email === sessionUser.email && body.password === 'stockspace-demo') {
+        sessionEnabled = true
+        return jsonResponse({ user: sessionUser })
+      }
+      return jsonResponse({ message: 'Email atau password salah.' }, 401)
+    }
+
+    if (url.includes('/api/auth/sign-out')) {
+      sessionEnabled = false
+      return jsonResponse({ success: true })
     }
 
     if (url.endsWith('/api/health')) return jsonResponse({ status: 'ok' })

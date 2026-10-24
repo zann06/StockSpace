@@ -37,6 +37,9 @@ services:
       DATABASE_URL: postgresql://stockspace:stockspace@db:5432/stockspace
       PORT: '4000'
       CORS_ORIGIN: http://localhost:5173,http://localhost:8080
+      BETTER_AUTH_URL: http://localhost:4000
+      # Set a real secret via the environment or an .env file next to compose.
+      BETTER_AUTH_SECRET: \${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET (see .env.example)}
     ports:
       - '4000:4000'
     depends_on:

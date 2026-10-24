@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { env } from '@/lib/env'
+
 import { apiFetch } from './client'
-import { useWorkspace } from './workspace-provider'
+import { useWorkspace } from './workspace-context'
 import type {
   ApiCategory,
   ApiLocationInventory,
@@ -252,6 +254,98 @@ export function useCreateMovement(kind: MovementKind) {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
+}
+
+export interface MovementReportParams {
+  from?: string
+  to?: string
+  type?: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
+  productId?: string
+}
+
+export function useMovementReport(params: MovementReportParams) {
+  const workspaceId = useWorkspaceId()
+  const query = new URLSearchParams()
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.type) query.set('type', params.type)
+  if (params.productId) query.set('productId', params.productId)
+
+  return useQuery({
+    queryKey: [
+      'report-movements',
+      workspaceId,
+      params.from ?? '',
+      params.to ?? '',
+      params.type ?? '',
+      params.productId ?? '',
+    ],
+    queryFn: () =>
+      apiFetch<{
+        data: (ApiMovement & {
+          sourceLocation: { code: string } | null
+          destinationLocation: { code: string } | null
+        })[]
+        pagination: { total: number }
+      }>(`/api/reports/movements?${query}`),
+    enabled: workspaceId !== '',
+  })
+}
+
+export function useLowStockReport() {
+  const workspaceId = useWorkspaceId()
+  return useQuery({
+    queryKey: ['report-low-stock', workspaceId],
+    queryFn: () =>
+      apiFetch<{
+        data: {
+          id: string
+          sku: string
+          name: string
+          category: string | null
+          quantity: number
+          reorderThreshold: number
+          shortfall: number
+          stockValue: number
+        }[]
+      }>('/api/reports/low-stock'),
+    enabled: workspaceId !== '',
+  })
+}
+
+/** Downloads a CSV report (cookie-authenticated blob download). */
+export async function downloadReportCsv(
+  report: 'low-stock' | 'movements',
+  params: MovementReportParams = {}
+): Promise<void> {
+  const query = new URLSearchParams({ report })
+  if (params.from) query.set('from', params.from)
+  if (params.to) query.set('to', params.to)
+  if (params.type) query.set('type', params.type)
+  if (params.productId) query.set('productId', params.productId)
+
+  const response = await fetch(`${env.VITE_API_URL}/api/reports/export.csv?${query}`, {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    let message = `Ekspor gagal (${response.status}).`
+    try {
+      const payload = (await response.json()) as { error?: { message?: string } }
+      message = payload.error?.message ?? message
+    } catch {
+      // ignore non-JSON errors
+    }
+    throw new Error(message)
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `stockspace-${report}-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 export type { WorkspaceSummary }

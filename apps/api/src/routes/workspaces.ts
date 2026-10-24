@@ -1,18 +1,26 @@
 import type { FastifyInstance } from 'fastify'
 
 import { prisma } from '../lib/prisma.js'
+import { requireSession } from '../lib/session.js'
 
-/**
- * Workspace listing. Until authentication lands (Phase 4) the web app uses
- * this to pick which workspace to operate on; with sessions it will list only
- * the workspaces the signed-in user belongs to. Not workspace-scoped itself.
- */
+/** Workspaces the signed-in user belongs to (with their role). Auth-only —
+ * the header-based workspace selection is not applied here. */
 export async function workspaceRoutes(app: FastifyInstance) {
-  app.get('/api/workspaces', async () => {
-    const workspaces = await prisma.workspace.findMany({
-      select: { id: true, name: true, currency: true, timezone: true },
+  app.get('/api/workspaces', { preHandler: requireSession }, async (request) => {
+    const memberships = await prisma.workspaceMember.findMany({
+      where: { userId: request.user.id },
+      select: {
+        role: true,
+        workspace: { select: { id: true, name: true, currency: true, timezone: true } },
+      },
       orderBy: { createdAt: 'asc' },
     })
-    return { data: workspaces }
+
+    return {
+      data: memberships.map((membership) => ({
+        ...membership.workspace,
+        role: membership.role,
+      })),
+    }
   })
 }

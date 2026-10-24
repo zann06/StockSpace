@@ -61,6 +61,8 @@ jobs:
       # database is created by the API test global setup.
       DATABASE_URL: postgresql://stockspace:stockspace@localhost:5432/stockspace
       DATABASE_URL_TEST: postgresql://stockspace:stockspace@localhost:5432/stockspace_test
+      BETTER_AUTH_SECRET: ci-test-secret-0123456789abcdef0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v4
 

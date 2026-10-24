@@ -2,16 +2,19 @@ import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { Prisma } from '@prisma/client'
 import { ZodError } from 'zod'
+import { fromNodeHeaders } from 'better-auth/node'
 
+import { auth } from './lib/auth.js'
 import { config } from './lib/config.js'
 import { AppError } from './lib/errors.js'
 import { prisma } from './lib/prisma.js'
-import { resolveWorkspace } from './lib/workspace.js'
+import { requireSession, resolveWorkspace } from './lib/session.js'
 import { dashboardRoutes } from './routes/dashboard.js'
 import { healthRoutes } from './routes/health.js'
 import { movementRoutes } from './routes/movements.js'
 import { notificationRoutes } from './routes/notifications.js'
 import { productRoutes } from './routes/products.js'
+import { reportRoutes } from './routes/reports.js'
 import { categoryRoutes, locationRoutes, warehouseRoutes } from './routes/warehouse.js'
 import { workspaceRoutes } from './routes/workspaces.js'
 
@@ -27,7 +30,8 @@ export function buildApp(): FastifyInstance {
     },
   })
 
-  app.register(cors, { origin: config.CORS_ORIGIN.split(',') })
+  // Cookie sessions require credentialed CORS with explicit origins.
+  app.register(cors, { origin: config.CORS_ORIGIN.split(','), credentials: true })
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
@@ -68,11 +72,37 @@ export function buildApp(): FastifyInstance {
   })
 
   app.register(healthRoutes)
-  // Workspace listing is not workspace-scoped: the web client uses it to pick
-  // the workspace to operate on until sessions exist (Phase 4).
-  app.register(workspaceRoutes)
+
+  // better-auth handlers (sign-in/email, sign-out, get-session, …) — bridged
+  // to Fastify per https://www.better-auth.com/docs/integrations/fastify.
+  app.route({
+    method: ['GET', 'POST'],
+    url: '/api/auth/*',
+    async handler(request, reply) {
+      try {
+        const url = new URL(request.url, `http://${request.headers.host}`)
+        const request_ = new Request(url.toString(), {
+          method: request.method,
+          headers: fromNodeHeaders(request.headers),
+          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+        })
+        const response = await auth.handler(request_)
+        reply.status(response.status)
+        response.headers.forEach((value, key) => reply.header(key, value))
+        return reply.send(response.body ? await response.text() : null)
+      } catch (error) {
+        request.log.error({ err: error }, 'auth handler error')
+        return reply
+          .status(500)
+          .send({ error: { code: 'AUTH_FAILURE', message: 'Kesalahan pada modul autentikasi.' } })
+      }
+    },
+  })
+
+  // Authenticated, workspace-scoped data routes (see lib/session.ts).
   app.register(async (scoped) => {
-    // All data routes are workspace-scoped (see lib/workspace.ts).
+    scoped.addHook('preHandler', requireSession)
+    await scoped.register(workspaceRoutes)
     scoped.addHook('preHandler', resolveWorkspace)
     await scoped.register(dashboardRoutes)
     await scoped.register(productRoutes)
@@ -81,6 +111,7 @@ export function buildApp(): FastifyInstance {
     await scoped.register(locationRoutes)
     await scoped.register(movementRoutes)
     await scoped.register(notificationRoutes)
+    await scoped.register(reportRoutes)
   })
 
   app.addHook('onClose', async () => {

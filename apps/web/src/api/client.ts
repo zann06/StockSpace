@@ -39,6 +39,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
+      credentials: 'include',
     })
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
@@ -53,9 +54,13 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     let code = 'UNKNOWN'
     let message = `Permintaan gagal (${response.status}).`
     try {
-      const payload = (await response.json()) as { error?: { code?: string; message?: string } }
-      code = payload.error?.code ?? code
-      message = payload.error?.message ?? message
+      const payload = (await response.json()) as {
+        error?: { code?: string; message?: string }
+        code?: string
+        message?: string
+      }
+      code = payload.error?.code ?? payload.code ?? code
+      message = payload.error?.message ?? payload.message ?? message
     } catch {
       // non-JSON error body — keep the generic message
     }

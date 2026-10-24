@@ -1,11 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
+import { useSession } from '@/api/auth'
 import { WorkspaceProvider } from '@/api/workspace-provider'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { InventoryPage } from '@/pages/InventoryPage'
+import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProductDetailPage } from '@/pages/ProductDetailPage'
 import { ReportsPage } from '@/pages/ReportsPage'
@@ -13,15 +15,18 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { TransactionsPage } from '@/pages/TransactionsPage'
 import { WarehousePage } from '@/pages/WarehousePage'
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 15_000,
-      refetchOnWindowFocus: false,
+/** One client per app instance (keeps test renders isolated). */
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        staleTime: 15_000,
+        refetchOnWindowFocus: false,
+      },
     },
-  },
-})
+  })
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -31,13 +36,54 @@ function ScrollToTop() {
   return null
 }
 
+function FullPageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <p className="text-sm font-semibold text-muted">Memuat StockSpace…</p>
+    </div>
+  )
+}
+
+/** Redirects unauthenticated visitors to /login and boots the workspace context. */
+function RequireAuth() {
+  const sessionQuery = useSession()
+  const location = useLocation()
+
+  if (sessionQuery.isLoading) return <FullPageLoading />
+  if (sessionQuery.error || !sessionQuery.data?.user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+
+  return (
+    <WorkspaceProvider>
+      <Outlet />
+    </WorkspaceProvider>
+  )
+}
+
+function GuestOnly({ children }: { children: ReactNode }) {
+  const sessionQuery = useSession()
+  if (sessionQuery.isLoading) return <FullPageLoading />
+  if (sessionQuery.data?.user) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 export default function App() {
+  const [queryClient] = useState(createQueryClient)
   return (
     <QueryClientProvider client={queryClient}>
-      <WorkspaceProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
+      <BrowserRouter>
+        <ScrollToTop />
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <GuestOnly>
+                <LoginPage />
+              </GuestOnly>
+            }
+          />
+          <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
@@ -62,10 +108,9 @@ export default function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
-          </Routes>
-          <Outlet />
-        </BrowserRouter>
-      </WorkspaceProvider>
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   )
 }

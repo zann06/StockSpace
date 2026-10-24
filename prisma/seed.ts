@@ -9,6 +9,8 @@
  */
 import { PrismaClient } from '@prisma/client'
 
+import { auth } from '../apps/api/src/lib/auth.js'
+
 const prisma = new PrismaClient()
 
 const LOCATIONS = [
@@ -252,27 +254,39 @@ async function main() {
   await prisma.warehouse.deleteMany()
   await prisma.workspaceMember.deleteMany()
   await prisma.workspace.deleteMany()
+  await prisma.session.deleteMany()
+  await prisma.account.deleteMany()
+  await prisma.verification.deleteMany()
   await prisma.user.deleteMany()
 
   const workspace = await prisma.workspace.create({
     data: { name: 'Toko TechNusa', currency: 'IDR', timezone: 'Asia/Jakarta' },
   })
 
-  const owner = await prisma.user.create({
-    data: { name: 'Farid Rizky', email: 'farid@technusa.example' },
-  })
-  const staff1 = await prisma.user.create({
-    data: { name: 'Dewi Lestari', email: 'dewi@technusa.example' },
-  })
-  const staff2 = await prisma.user.create({
-    data: { name: 'Budi Santoso', email: 'budi@technusa.example' },
-  })
+  // Demo accounts with real credentials — DEVELOPMENT ONLY (PRD §7.7).
+  // Passwords are printed at the end of the seed; change or remove them
+  // before any real deployment.
+  const DEMO_PASSWORD = 'stockspace-demo'
+  const signUp = async (name: string, email: string) => {
+    const result = await auth.api.signUpEmail({
+      body: { name, email, password: DEMO_PASSWORD },
+    })
+    const user = result.user
+    // signUpEmail also opens a session — drop it so the seed leaves no live sessions.
+    await prisma.session.deleteMany({ where: { userId: user.id } })
+    return user
+  }
+  const owner = await signUp('Farid Rizky', 'farid@technusa.example')
+  const staff1 = await signUp('Dewi Lestari', 'dewi@technusa.example')
+  const staff2 = await signUp('Budi Santoso', 'budi@technusa.example')
+  const viewer = await signUp('Nadia Viewer', 'viewer@technusa.example')
 
   await prisma.workspaceMember.createMany({
     data: [
       { workspaceId: workspace.id, userId: owner.id, role: 'OWNER' },
       { workspaceId: workspace.id, userId: staff1.id, role: 'STAFF' },
       { workspaceId: workspace.id, userId: staff2.id, role: 'STAFF' },
+      { workspaceId: workspace.id, userId: viewer.id, role: 'VIEWER' },
     ],
   })
 
@@ -449,7 +463,12 @@ async function main() {
   warehouse  : ${warehouse.name} (${warehouse.id})
   locations  : ${LOCATIONS.length}, products: ${PRODUCTS.length}, balances: ${BALANCES.length}
   movements  : ${seeds.length}
-  X-Workspace-Id header for the API: ${workspace.id}`)
+
+  DEVELOPMENT demo accounts (password untuk semua: "${DEMO_PASSWORD}"):
+    OWNER  farid@technusa.example
+    STAFF  dewi@technusa.example
+    STAFF  budi@technusa.example
+    VIEWER viewer@technusa.example`)
 }
 
 main()

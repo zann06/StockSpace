@@ -1,21 +1,11 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from './client'
+import { WorkspaceContext } from './workspace-context'
 import type { WorkspaceSummary } from './types'
 
 const STORAGE_KEY = 'stockspace.workspaceId'
-
-interface WorkspaceContextValue {
-  workspace: WorkspaceSummary | null
-  workspaces: WorkspaceSummary[]
-  /** True until the workspace list has been fetched (and one selected). */
-  loading: boolean
-  error: Error | null
-  setWorkspaceId: (id: string) => void
-}
-
-const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
 /**
  * Resolves which workspace the app operates on. Until authentication lands
@@ -52,7 +42,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const value = useMemo<WorkspaceContextValue>(
+  const value = useMemo<import('./workspace-context').WorkspaceContextValue>(
     () => ({
       workspace,
       workspaces,
@@ -64,10 +54,4 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>
-}
-
-export function useWorkspace(): WorkspaceContextValue {
-  const context = useContext(WorkspaceContext)
-  if (!context) throw new Error('useWorkspace must be used within WorkspaceProvider')
-  return context
 }

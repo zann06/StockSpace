@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { AppError, ERRORS } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
+import { requireRole } from '../lib/session.js'
 import { parseWith } from '../lib/validate.js'
 
 const listQuerySchema = z.object({
@@ -93,7 +94,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   })
 
-  app.post('/api/products', async (request) => {
+  app.post('/api/products', { preHandler: requireRole('ADMIN') }, async (request) => {
     const body = parseWith(createProductSchema, request.body)
 
     if (body.categoryId) {
@@ -175,7 +176,7 @@ export async function productRoutes(app: FastifyInstance) {
     }
   })
 
-  app.patch('/api/products/:id', async (request) => {
+  app.patch('/api/products/:id', { preHandler: requireRole('ADMIN') }, async (request) => {
     const { id } = parseWith(z.object({ id: z.string().uuid() }), request.params)
     const body = parseWith(updateProductSchema, request.body)
 

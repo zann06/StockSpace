@@ -6,10 +6,10 @@ StockSpace helps a small business manage inventory while seeing exactly where
 products are stored — receive, store, move, adjust, and issue stock, and explore
 your racks in a real 3D scene that reflects your saved warehouse layout.
 
-> **Status: Phase 3 (live data) complete.** The web app now runs on the
-> Fastify API + PostgreSQL — the 3D scene, dashboard, inventory, and
-> transaction forms all read and write the database (seeded with the fictional
-> demo workspace). Authentication, roles, and reports land in Phase 4. See the
+> **Status: Phase 4 (auth, roles, reports) complete.** Sign in with email +
+> cookie sessions (better-auth), server-enforced workspace roles, filtered
+> movement reports with CSV export, and grouped low-stock notifications — all
+> on top of the live Fastify API + PostgreSQL. See the
 > [roadmap](#roadmap) and [implementation checklist](docs/implementation-checklist.md).
 
 ## Features (current)
@@ -89,9 +89,17 @@ npm run build        # production build (web + api)
 npm run format:check # Prettier
 ```
 
-There is no login yet (authentication is Phase 4); the app opens directly into
-the dashboard in demo mode. **No demo credentials exist yet** — when
-authentication lands, a development-only seed account will be documented here.
+**Sign in** at `/login` with the seeded development accounts (fictional
+business "Toko TechNusa", password for all: `stockspace-demo`):
+
+| Email | Role | Can do |
+| --- | --- | --- |
+| `farid@technusa.example` | OWNER | everything, incl. product CRUD |
+| `dewi@technusa.example` / `budi@technusa.example` | STAFF | read + record stock movements |
+| `viewer@technusa.example` | VIEWER | read-only |
+
+These accounts exist **only in the local development seed** — never in
+production (roles are enforced server-side on every request).
 
 ### Docker
 
@@ -129,8 +137,7 @@ stockspace/
 - [x] **Phase 2** — Fastify API, PostgreSQL + Prisma, stock-in/out/transfer/
       adjustment with DB transactions, integration tests (26/26 pass)
 - [x] **Phase 3** — web app wired to the API (3D scene, dashboard, transactions)
-- [ ] **Phase 4** — authentication (better-auth), roles & workspace scoping,
-      reports, CSV export, notifications
+- [x] **Phase 4** — better-auth sign-in/sessions, server-side roles (OWNER/ADMIN/STAFF/VIEWER), workspace membership checks, filtered reports + CSV export, grouped low-stock notifications
 - [ ] **Phase 5** — release hardening, E2E smoke test, VPS deployment guide
 
 ## Contributing

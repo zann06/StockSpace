@@ -107,19 +107,25 @@ resolving `X-Workspace-Id`; it becomes membership-based when auth lands
 the MVP. The compose `db` service publishes host port **5433** to avoid
 clashing with a locally installed PostgreSQL on 5432.
 
-### D6 — Authentication approach (planned, Phase 4)
+### D6 — Authentication & authorization (Phase 4, implemented)
 
-**Decision.** [better-auth](https://better-auth.com) with the Prisma adapter:
-email/password credentials (argon2 hashing, provided by the library) plus
-HTTP-only cookie sessions, roles (`OWNER`, `STAFF`, `VIEWER`) checked
-server-side on every protected route and scoped to a workspace. One auth
-system, no mixing.
+**Decision.** [better-auth](https://www.better-auth.com) v1.7 with the Prisma
+adapter: email/password credentials (scrypt hashing handled by the library) and
+HTTP-only cookie sessions (`User`/`Session`/`Account`/`Verification` tables).
+Mounted on Fastify via a catch-all `/api/auth/*` route that bridges to
+`auth.handler` (per the official Fastify guide); CORS is credentialed with
+explicit origins. Server-side enforcement in `apps/api/src/lib/session.ts`:
+every data route resolves the session (`requireSession`), the active workspace
+from `X-Workspace-Id` (default: first membership) with a membership check
+(`resolveWorkspace`), and write routes are guarded by `requireRole`:
+VIEWER read-only · STAFF+ records movements · ADMIN+ edits products · OWNER
+manages the workspace. The movement actor is always the session user — the
+client cannot choose it. Seeded development accounts are documented in the
+README and exist only via `npm run db:seed`.
 
-**Why.** The PRD requires an established solution over hand-rolled password
-storage, compatible with Fastify and Prisma, and TypeScript-first. If better-auth
-turns out to be a poor fit during Phase 4, the fallback is Lucia-style session
-tables implemented directly on Prisma — the schema shape below already
-accommodates it.
+**Why.** One coherent, maintained auth system (PRD §7.7) with no hand-rolled
+password storage; roles live in `WorkspaceMember.role` and every permission
+check happens server-side.
 
 ### D7 — Quality gates
 

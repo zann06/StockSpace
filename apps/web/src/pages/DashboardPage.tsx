@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowLeftRight, Package, PackagePlus, Wallet } from 'lucide-react'
 
 import { useDashboardSummary, useWarehouseData } from '@/api/hooks'
-import { useWorkspace } from '@/api/workspace-provider'
+import { useWorkspace } from '@/api/workspace-context'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { LowStockCard } from '@/components/dashboard/LowStockCard'

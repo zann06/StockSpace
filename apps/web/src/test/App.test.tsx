@@ -56,7 +56,7 @@ describe('LocationList (accessibility fallback)', () => {
 describe('App shell routing (live API data flow)', () => {
   it('lands on the dashboard with KPI cards fed by the API', async () => {
     render(<App />)
-    const sidebar = screen.getByRole('navigation', { name: 'Navigasi utama' })
+    const sidebar = await screen.findByRole('navigation', { name: 'Navigasi utama' })
     expect(within(sidebar).getByRole('link', { name: /Dashboard/ })).toBeInTheDocument()
 
     expect(await screen.findByText('Total Stok')).toBeInTheDocument()
@@ -70,7 +70,7 @@ describe('App shell routing (live API data flow)', () => {
   it('navigates to inventory and shows products from the API', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const sidebar = screen.getByRole('navigation', { name: 'Navigasi utama' })
+    const sidebar = await screen.findByRole('navigation', { name: 'Navigasi utama' })
     await user.click(within(sidebar).getByRole('link', { name: /Inventaris/ }))
     expect(await screen.findByRole('table')).toBeInTheDocument()
     expect(await screen.findByText('Laptop ASUS TUF F15')).toBeInTheDocument()
@@ -79,7 +79,7 @@ describe('App shell routing (live API data flow)', () => {
   it('filters the inventory table by search input', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const sidebar = screen.getByRole('navigation', { name: 'Navigasi utama' })
+    const sidebar = await screen.findByRole('navigation', { name: 'Navigasi utama' })
     await user.click(within(sidebar).getByRole('link', { name: /Inventaris/ }))
     await screen.findByText('Laptop ASUS TUF F15')
 
@@ -95,7 +95,8 @@ describe('App shell routing (live API data flow)', () => {
     window.history.pushState({}, '', '/transactions/stock-in')
     render(<App />)
 
-    const productSelect = await screen.findByRole('combobox', { name: /Produk/ })
+    await screen.findByRole('option', { name: /Laptop ASUS TUF/ })
+    const productSelect = screen.getByRole('combobox', { name: /Produk/ })
     await user.selectOptions(productSelect, 'p-01')
 
     const destinationSelect = await screen.findByRole('combobox', { name: /Lokasi Tujuan/ })
@@ -114,7 +115,8 @@ describe('App shell routing (live API data flow)', () => {
     window.history.pushState({}, '', '/transactions/stock-out')
     render(<App />)
 
-    const productSelect = await screen.findByRole('combobox', { name: /Produk/ })
+    await screen.findByRole('option', { name: /Laptop ASUS TUF/ })
+    const productSelect = screen.getByRole('combobox', { name: /Produk/ })
     await user.selectOptions(productSelect, 'p-01')
 
     const sourceSelect = await screen.findByRole('combobox', { name: /Lokasi Sumber/ })
@@ -126,33 +128,86 @@ describe('App shell routing (live API data flow)', () => {
     await waitFor(() => expect(screen.getByText(/Stok tidak cukup/)).toBeInTheDocument())
   })
 
-  it('navigates to reports with live low-stock and utilization data', async () => {
+  it('navigates to reports with live data, filters, and CSV export', async () => {
     const user = userEvent.setup()
     render(<App />)
-    const sidebar = screen.getByRole('navigation', { name: 'Navigasi utama' })
+    const sidebar = await screen.findByRole('navigation', { name: 'Navigasi utama' })
     await user.click(within(sidebar).getByRole('link', { name: /Laporan/ }))
     expect(await screen.findByText('Laporan Stok Menipis')).toBeInTheDocument()
-    expect(await screen.findByText('Inventaris per Lokasi')).toBeInTheDocument()
-    expect(screen.getAllByText(/Fase 4/).length).toBeGreaterThan(0)
+    expect(await screen.findByText('Laporan Pergerakan Stok')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /CSV Stok Menipis/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /CSV Pergerakan/ })).toBeInTheDocument()
   })
 
-  it('shows a 404 page for unknown routes', () => {
+  it('shows a 404 page for unknown routes', async () => {
     window.history.pushState({}, '', '/does-not-exist')
     render(<App />)
-    expect(screen.getByText('404')).toBeInTheDocument()
+    expect(await screen.findByText('404')).toBeInTheDocument()
   })
 
-  it('renders the WebGL list fallback when WebGL is unavailable', () => {
+  it('renders the WebGL list fallback when WebGL is unavailable', async () => {
     window.history.pushState({}, '', '/dashboard')
     const original = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = () => null
     try {
       expect(isWebGLAvailable()).toBe(false)
       render(<App />)
-      expect(screen.getByText('Total Stok')).toBeInTheDocument()
-      expect(screen.getAllByText('Rak A1').length).toBeGreaterThan(0)
+      expect(await screen.findByText('Total Stok')).toBeInTheDocument()
+      expect((await screen.findAllByText('Rak A1')).length).toBeGreaterThan(0)
     } finally {
       HTMLCanvasElement.prototype.getContext = original
     }
+  })
+})
+
+describe('authentication (web)', () => {
+  it('shows the login page and signs in with valid demo credentials', async () => {
+    const user = userEvent.setup()
+    installFetchStub({ session: false })
+    window.history.pushState({}, '', '/login')
+    render(<App />)
+
+    const emailInput = await screen.findByLabelText(/Email/)
+    await user.type(emailInput, 'farid@technusa.example')
+    await user.type(screen.getByLabelText(/Password/), 'stockspace-demo')
+    await user.click(screen.getByRole('button', { name: 'Masuk' }))
+
+    expect(await screen.findByText('Total Stok')).toBeInTheDocument()
+  })
+
+  it('rejects wrong credentials with a readable error', async () => {
+    const user = userEvent.setup()
+    installFetchStub({ session: false })
+    window.history.pushState({}, '', '/login')
+    render(<App />)
+
+    const emailInput = await screen.findByLabelText(/Email/)
+    await user.type(emailInput, 'farid@technusa.example')
+    await user.type(screen.getByLabelText(/Password/), 'wrong-password')
+    await user.click(screen.getByRole('button', { name: 'Masuk' }))
+
+    expect(await screen.findByText(/Email atau password salah/)).toBeInTheDocument()
+  })
+
+  it('redirects unauthenticated visitors to the login page', async () => {
+    installFetchStub({ session: false })
+    window.history.pushState({}, '', '/dashboard')
+    render(<App />)
+    expect(await screen.findByText('Masuk untuk mengelola inventaris Anda')).toBeInTheDocument()
+  })
+
+  it('shows the signed-in user in the profile menu and signs out', async () => {
+    const user = userEvent.setup()
+    window.history.pushState({}, '', '/dashboard')
+    render(<App />)
+    expect(await screen.findByText('Total Stok')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Menu pengguna' }))
+    const menu = screen.getByRole('button', { name: 'Menu pengguna' }).parentElement!
+    const logout = within(menu).getByRole('button', { name: 'Keluar' })
+    await user.click(logout)
+
+    // Session cleared → back to the login page.
+    expect(await screen.findByText('Masuk untuk mengelola inventaris Anda')).toBeInTheDocument()
   })
 })

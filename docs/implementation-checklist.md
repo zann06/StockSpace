@@ -77,10 +77,10 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 
 ## Phase 4 — Auth, permissions, reports
 
-- [ ] better-auth integration (credentials + cookie sessions) and login page
-- [ ] Server-side role/workspace enforcement + authorization tests
-- [ ] Reports: low-stock, movements with filters, CSV export
-- [ ] In-app notifications (grouped low-stock alerts)
+- [x] better-auth integration (credentials + cookie sessions) and login page
+- [x] Server-side role/workspace enforcement + authorization tests
+- [x] Reports: low-stock, movements with filters, CSV export
+- [x] In-app notifications (grouped low-stock alerts)
 
 ## Phase 5 — Release hardening
 

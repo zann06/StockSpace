@@ -3,7 +3,7 @@ import { List, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-r
 
 import type { LevelFilter, ViewMode } from '@/types'
 import { useWarehouseData } from '@/api/hooks'
-import { useWorkspace } from '@/api/workspace-provider'
+import { useWorkspace } from '@/api/workspace-context'
 import { IconButton } from '@/components/ui/IconButton'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { LocationList } from '@/components/warehouse/LocationList'

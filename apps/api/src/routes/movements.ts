@@ -3,7 +3,9 @@ import { z } from 'zod'
 
 import { AppError, ERRORS } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
+import { requireRole } from '../lib/session.js'
 import { parseWith } from '../lib/validate.js'
+import { maybeCreateLowStockNotification } from '../services/notifications.js'
 import { movementService, type MovementInput } from '../services/movements.js'
 
 const movementBodySchema = z
@@ -16,9 +18,6 @@ const movementBodySchema = z
     destinationLevel: z.number().int().min(1).max(10).nullish(),
     reference: z.string().trim().max(64).nullish(),
     note: z.string().trim().max(1000).nullish(),
-    // Optional until authentication lands (Phase 4): when omitted, the first
-    // owner/admin of the workspace is recorded as the actor.
-    actorId: z.string().uuid().nullish(),
   })
   .strict()
 
@@ -34,7 +33,7 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
 /**
  * Resolve the owning warehouse of the movement's location (source preferred,
- * else destination), verifying the warehouse belongs to the caller's workspace.
+ * else destination), verifying the warehouse belongs to the active workspace.
  */
 async function resolveWarehouseId(
   tx: Tx,
@@ -55,27 +54,6 @@ async function resolveWarehouseId(
   return location.warehouseId
 }
 
-/** Default actor (first workspace owner, else any member) for the pre-auth phase. */
-async function resolveActorId(
-  tx: Tx,
-  workspaceId: string,
-  actorId?: string | null
-): Promise<string> {
-  if (actorId) return actorId
-  const member = await tx.workspaceMember.findFirst({
-    where: { workspaceId, role: { in: ['OWNER', 'ADMIN', 'STAFF'] } },
-    orderBy: { role: 'asc' },
-    select: { userId: true },
-  })
-  if (!member) {
-    throw AppError.badRequest(
-      'ACTOR_REQUIRED',
-      'Workspace tidak memiliki anggota yang bisa dicatat sebagai aktor.'
-    )
-  }
-  return member.userId
-}
-
 type MovementOperation = (
   tx: Tx,
   workspaceId: string,
@@ -83,7 +61,11 @@ type MovementOperation = (
   input: MovementInput
 ) => ReturnType<typeof movementService.stockIn>
 
-/** Shared pipeline: validate → transaction (warehouse + actor + service call). */
+/**
+ * Shared pipeline: validate → transaction (warehouse + session actor + service
+ * call) → post-commit low-stock notification check. The actor always comes
+ * from the session — the client can never choose it.
+ */
 async function applyMovement(
   request: FastifyRequest,
   kind: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT',
@@ -93,8 +75,7 @@ async function applyMovement(
   const data = await prisma.$transaction(async (tx) => {
     const workspaceId = request.workspace.id
     const warehouseId = await resolveWarehouseId(tx, workspaceId, body)
-    const actorId = await resolveActorId(tx, workspaceId, body.actorId)
-    const input: MovementInput = {
+    const input = {
       productId: body.productId,
       quantity: body.quantity,
       sourceLocationId: body.sourceLocationId ?? null,
@@ -103,34 +84,45 @@ async function applyMovement(
       destinationLevel: body.destinationLevel ?? null,
       reference: body.reference ?? null,
       note: body.note ?? null,
-      actorId,
+      actorId: request.user.id,
     }
     return operation(tx, workspaceId, warehouseId, input)
   })
+
+  // Best-effort notification (never blocks the committed movement result).
+  try {
+    await maybeCreateLowStockNotification(request.workspace.id, body.productId)
+  } catch (error) {
+    request.log.warn({ err: error }, 'low-stock notification check failed')
+  }
+
   request.log.info({ movementId: data.id, type: kind }, 'stock movement committed')
   return { data }
 }
 
 export async function movementRoutes(app: FastifyInstance) {
-  app.post('/api/stock-movements/stock-in', (request) =>
+  // Recording stock movements requires at least STAFF (PRD §4).
+  const staffOnly = { preHandler: requireRole('STAFF') }
+
+  app.post('/api/stock-movements/stock-in', staffOnly, (request) =>
     applyMovement(request, 'IN', (tx, workspaceId, warehouseId, input) =>
       movementService.stockIn(tx, workspaceId, warehouseId, input)
     )
   )
 
-  app.post('/api/stock-movements/stock-out', (request) =>
+  app.post('/api/stock-movements/stock-out', staffOnly, (request) =>
     applyMovement(request, 'OUT', (tx, workspaceId, warehouseId, input) =>
       movementService.stockOut(tx, workspaceId, warehouseId, input)
     )
   )
 
-  app.post('/api/stock-movements/transfer', (request) =>
+  app.post('/api/stock-movements/transfer', staffOnly, (request) =>
     applyMovement(request, 'TRANSFER', (tx, workspaceId, warehouseId, input) =>
       movementService.transfer(tx, workspaceId, warehouseId, input)
     )
   )
 
-  app.post('/api/stock-movements/adjustment', (request) =>
+  app.post('/api/stock-movements/adjustment', staffOnly, (request) =>
     applyMovement(request, 'ADJUSTMENT', (tx, workspaceId, warehouseId, input) =>
       movementService.adjustment(tx, workspaceId, warehouseId, input)
     )

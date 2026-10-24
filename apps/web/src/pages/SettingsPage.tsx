@@ -1,7 +1,7 @@
 import { Save } from 'lucide-react'
 
 import { useCategories, useWarehouseData } from '@/api/hooks'
-import { useWorkspace } from '@/api/workspace-provider'
+import { useWorkspace } from '@/api/workspace-context'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/Badge'

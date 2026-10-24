@@ -5,6 +5,8 @@ export interface WorkspaceSummary {
   name: string
   currency: string
   timezone: string
+  /** Role of the signed-in user in this workspace (from /api/workspaces). */
+  role?: 'OWNER' | 'ADMIN' | 'STAFF' | 'VIEWER'
 }
 
 export interface DashboardLowStockItem {
