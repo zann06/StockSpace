@@ -66,14 +66,14 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] API Dockerfile + compose `api` service (migrate-deploy on boot)
 - [x] CI: dedicated `api` job with a PostgreSQL service container
 
-## Phase 3 — Connect 3D to real data
+## Phase 3 — Connect 3D to real data ✅
 
-- [ ] Load warehouse layout from API (`GET /api/warehouses/:id/layout`)
-- [ ] 3D objects bound to storage-location records; detail panel shows real
+- [x] Load warehouse layout from API (`GET /api/warehouses/:id/layout`)
+- [x] 3D objects bound to storage-location records; detail panel shows real
       balances
 - [ ] Movement success refreshes balances, dashboard metrics, and scene state
-- [ ] Replace mock KPIs with `GET /api/dashboard/summary`; TanStack Query layer
-- [ ] Remove/retire `src/mocks` from the default path
+- [x] Replace mock KPIs with `GET /api/dashboard/summary`; TanStack Query layer
+- [x] Remove/retire `src/mocks` from the default path
 
 ## Phase 4 — Auth, permissions, reports
 

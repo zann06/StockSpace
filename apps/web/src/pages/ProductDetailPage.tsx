@@ -8,6 +8,8 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 
+import type { MovementType } from '@/types'
+import { useProduct } from '@/api/hooks'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -15,9 +17,6 @@ import { DemoBadge } from '@/components/common/DemoBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { MOVEMENT_TYPE_LABEL } from '@/lib/movement-meta'
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/format'
-import { movementsForProduct, quantityByProduct } from '@/lib/stats'
-import { balances, locations, movements, products } from '@/mocks/warehouse-data'
-import type { MovementType } from '@/types'
 
 const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
   IN: PackagePlus,
@@ -28,38 +27,50 @@ const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const product = products.find((candidate) => candidate.id === id)
+  const productQuery = useProduct(id)
 
-  if (!product) {
+  if (productQuery.isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm font-semibold text-muted">Memuat produk…</p>
+      </div>
+    )
+  }
+
+  const product = productQuery.data?.data
+
+  if (productQuery.error || !product) {
     return (
       <Card>
         <EmptyState
           icon={SearchX}
-          title="Produk tidak ditemukan"
-          description="Produk mungkin telah diarsipkan atau tautan tidak valid."
+          title={productQuery.error ? 'Gagal memuat produk' : 'Produk tidak ditemukan'}
+          description={
+            productQuery.error
+              ? productQuery.error.message
+              : 'Produk mungkin telah diarsipkan atau tautan tidak valid.'
+          }
           action={
-            <Link
-              to="/inventory"
-              className="inline-flex h-9 items-center rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
-            >
-              Kembali ke Inventaris
-            </Link>
+            productQuery.error ? (
+              <Button size="sm" onClick={() => void productQuery.refetch()}>
+                Coba lagi
+              </Button>
+            ) : (
+              <Link
+                to="/inventory"
+                className="inline-flex h-9 items-center rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
+              >
+                Kembali ke Inventaris
+              </Link>
+            )
           }
         />
       </Card>
     )
   }
 
-  const quantity = quantityByProduct(balances).get(product.id) ?? 0
+  const quantity = product.totalQuantity
   const low = quantity < product.reorderThreshold
-  const history = movementsForProduct(movements, product.id)
-  const locationRows = balances
-    .filter((balance) => balance.productId === product.id)
-    .map((balance) => ({
-      balance,
-      location: locations.find((candidate) => candidate.id === balance.locationId),
-    }))
-    .sort((a, b) => b.balance.quantity - a.balance.quantity)
   const stockValue = quantity * product.costPrice
 
   return (
@@ -92,7 +103,7 @@ export function ProductDetailPage() {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Badge tone="primary">{product.sku}</Badge>
-                <Badge>{product.category}</Badge>
+                {product.category ? <Badge>{product.category.name}</Badge> : null}
                 {product.active ? (
                   <Badge tone="success">Aktif</Badge>
                 ) : (
@@ -106,7 +117,7 @@ export function ProductDetailPage() {
             <Button
               variant="secondary"
               disabled
-              title="Penyuntingan produk tersedia setelah API Fase 2 terhubung."
+              title="Penyuntingan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
             >
               Edit Produk
             </Button>
@@ -138,9 +149,9 @@ export function ProductDetailPage() {
             </dd>
           </div>
           <div className="rounded-card bg-canvas px-4 py-3">
-            <dt className="text-[11px] font-semibold text-muted">Total Terjual (demo)</dt>
-            <dd className="mt-0.5 text-lg font-extrabold text-ink">
-              {formatNumber(product.totalMoved)}
+            <dt className="text-[11px] font-semibold text-muted">Diperbarui</dt>
+            <dd className="mt-0.5 text-sm font-extrabold text-ink">
+              {formatRelativeTime(product.updatedAt)}
             </dd>
           </div>
         </dl>
@@ -159,9 +170,9 @@ export function ProductDetailPage() {
         <Card className="overflow-hidden">
           <CardHeader
             title="Stok per Lokasi"
-            subtitle={`${locationRows.length} lokasi menyimpan produk ini`}
+            subtitle={`${product.balances.length} lokasi menyimpan produk ini`}
           />
-          {locationRows.length === 0 ? (
+          {product.balances.length === 0 ? (
             <EmptyState
               icon={PackageMinus}
               title="Belum ada stok tersimpan"
@@ -169,16 +180,16 @@ export function ProductDetailPage() {
             />
           ) : (
             <ul className="divide-y divide-line/70">
-              {locationRows.map(({ balance, location }) => (
-                <li
-                  key={`${balance.locationId}-${balance.level ?? 'flat'}`}
-                  className="flex items-center gap-3 px-5 py-3"
-                >
+              {product.balances.map((balance) => (
+                <li key={balance.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-ink">{location?.label ?? '—'}</p>
+                    <p className="text-sm font-bold text-ink">{balance.location.label}</p>
                     <p className="text-xs text-muted">
-                      {location?.code} · {location?.zone}
-                      {balance.level ? ` · Level ${balance.level}` : ''}
+                      {balance.location.code}
+                      {balance.location.zone ? ` · ${balance.location.zone.name}` : ''}
+                      {balance.level > 1 || product.balances.length > 0
+                        ? ` · Level ${balance.level}`
+                        : ''}
                     </p>
                   </div>
                   <span className="text-sm font-extrabold text-ink">
@@ -193,14 +204,14 @@ export function ProductDetailPage() {
         <Card className="overflow-hidden">
           <CardHeader
             title="Riwayat Pergerakan"
-            subtitle="8 transaksi terakhir untuk produk ini"
+            subtitle="Transaksi terakhir untuk produk ini"
             action={
               <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">
                 Lihat semua
               </Link>
             }
           />
-          {history.length === 0 ? (
+          {product.movements.length === 0 ? (
             <EmptyState
               icon={PackageMinus}
               title="Belum ada pergerakan"
@@ -208,7 +219,7 @@ export function ProductDetailPage() {
             />
           ) : (
             <ul className="divide-y divide-line/70">
-              {history.slice(0, 8).map((movement) => {
+              {product.movements.slice(0, 8).map((movement) => {
                 const Icon = TYPE_ICON[movement.type]
                 return (
                   <li key={movement.id} className="flex items-center gap-3 px-5 py-3">
@@ -225,7 +236,7 @@ export function ProductDetailPage() {
                         ) : null}
                       </p>
                       <p className="text-xs text-muted">
-                        {formatRelativeTime(movement.createdAt)} · {movement.actor}
+                        {formatRelativeTime(movement.createdAt)} · {movement.actor.name}
                       </p>
                     </div>
                     <span className="text-sm font-extrabold text-ink">

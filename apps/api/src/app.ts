@@ -13,6 +13,7 @@ import { movementRoutes } from './routes/movements.js'
 import { notificationRoutes } from './routes/notifications.js'
 import { productRoutes } from './routes/products.js'
 import { categoryRoutes, locationRoutes, warehouseRoutes } from './routes/warehouse.js'
+import { workspaceRoutes } from './routes/workspaces.js'
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -67,6 +68,9 @@ export function buildApp(): FastifyInstance {
   })
 
   app.register(healthRoutes)
+  // Workspace listing is not workspace-scoped: the web client uses it to pick
+  // the workspace to operate on until sessions exist (Phase 4).
+  app.register(workspaceRoutes)
   app.register(async (scoped) => {
     // All data routes are workspace-scoped (see lib/workspace.ts).
     scoped.addHook('preHandler', resolveWorkspace)

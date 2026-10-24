@@ -6,11 +6,11 @@ StockSpace helps a small business manage inventory while seeing exactly where
 products are stored — receive, store, move, adjust, and issue stock, and explore
 your racks in a real 3D scene that reflects your saved warehouse layout.
 
-> **Status: Phase 2 (backend + persistence) complete.** The Fastify API,
-> PostgreSQL schema, and stock-movement engine with tested transactional
-> invariants are in place; the web app still runs on clearly-labelled demo
-> data until Phase 3 wires it to the API. See the [roadmap](#roadmap) and
-> [implementation checklist](docs/implementation-checklist.md).
+> **Status: Phase 3 (live data) complete.** The web app now runs on the
+> Fastify API + PostgreSQL — the 3D scene, dashboard, inventory, and
+> transaction forms all read and write the database (seeded with the fictional
+> demo workspace). Authentication, roles, and reports land in Phase 4. See the
+> [roadmap](#roadmap) and [implementation checklist](docs/implementation-checklist.md).
 
 ## Features (current)
 
@@ -128,7 +128,7 @@ stockspace/
 - [x] **Phase 1** — UI shell, dashboard, interactive 3D prototype (demo data)
 - [x] **Phase 2** — Fastify API, PostgreSQL + Prisma, stock-in/out/transfer/
       adjustment with DB transactions, integration tests (26/26 pass)
-- [ ] **Phase 3** — connect 3D & dashboard to real data
+- [x] **Phase 3** — web app wired to the API (3D scene, dashboard, transactions)
 - [ ] **Phase 4** — authentication (better-auth), roles & workspace scoping,
       reports, CSV export, notifications
 - [ ] **Phase 5** — release hardening, E2E smoke test, VPS deployment guide

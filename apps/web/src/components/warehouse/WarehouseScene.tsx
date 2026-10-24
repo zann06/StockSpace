@@ -7,7 +7,7 @@ import type {
   Balance,
   LevelFilter,
   OccupancyStatus,
-  Product,
+  SceneProduct,
   StorageLocation,
   ViewMode,
   ZoomCommand,
@@ -42,7 +42,7 @@ const KRAFT_COLORS = ['#d9b98e', '#cdae82', '#e2c79f', '#d3b188'] as const
 export interface WarehouseSceneProps {
   locations: StorageLocation[]
   balances: Balance[]
-  products: Product[]
+  products: SceneProduct[]
   selectedLocationId: string | null
   onSelect: (id: string | null) => void
   levelFilter: LevelFilter

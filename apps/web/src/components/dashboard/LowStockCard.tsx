@@ -1,16 +1,12 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ChevronRight } from 'lucide-react'
 
+import type { DashboardLowStockItem } from '@/api/types'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/format'
-import { lowStockProducts, quantityByProduct } from '@/lib/stats'
-import { balances, products } from '@/mocks/warehouse-data'
 
 /** Low-stock summary — quantity vs reorder threshold with proportional bars. */
-export function LowStockCard({ limit = 6 }: { limit?: number }) {
-  const quantities = quantityByProduct(balances)
-  const items = lowStockProducts(products, balances).slice(0, limit)
-
+export function LowStockCard({ items }: { items: DashboardLowStockItem[] }) {
   return (
     <Card className="flex flex-col">
       <CardHeader
@@ -31,12 +27,11 @@ export function LowStockCard({ limit = 6 }: { limit?: number }) {
         </p>
       ) : (
         <ul className="flex flex-1 flex-col justify-center gap-4 px-5 py-4">
-          {items.map((product) => {
-            const quantity = quantities.get(product.id) ?? 0
-            const ratio = Math.max(0.04, quantity / product.reorderThreshold)
+          {items.map((item) => {
+            const ratio = Math.max(0.04, item.quantity / item.reorderThreshold)
             const critical = ratio < 0.5
             return (
-              <li key={product.id}>
+              <li key={item.id}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-2">
                     <AlertTriangle
@@ -44,17 +39,17 @@ export function LowStockCard({ limit = 6 }: { limit?: number }) {
                       className={`h-3.5 w-3.5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`}
                     />
                     <Link
-                      to={`/inventory/products/${product.id}`}
+                      to={`/inventory/products/${item.id}`}
                       className="truncate text-sm font-semibold text-ink hover:text-primary"
-                      title={product.name}
+                      title={item.name}
                     >
-                      {product.name}
+                      {item.name}
                     </Link>
                   </div>
                   <span
                     className={`shrink-0 text-xs font-bold ${critical ? 'text-danger' : 'text-warning'}`}
                   >
-                    {formatNumber(quantity)}/{formatNumber(product.reorderThreshold)}
+                    {formatNumber(item.quantity)}/{formatNumber(item.reorderThreshold)}
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-canvas">

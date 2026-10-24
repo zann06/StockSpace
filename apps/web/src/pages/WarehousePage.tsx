@@ -1,16 +1,17 @@
 import { useSearchParams } from 'react-router-dom'
 
+import { useWarehouseData } from '@/api/hooks'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LocationDetailPanel } from '@/components/warehouse/LocationDetailPanel'
 import { WarehouseView } from '@/components/warehouse/WarehouseView'
 import { Card } from '@/components/ui/Card'
-import { locations } from '@/mocks/warehouse-data'
 
 /** Full-page 3D warehouse. The selected location is derived from the `?loc=`
  * URL parameter (deep-linkable from global search and the detail panel). */
 export function WarehousePage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { locations } = useWarehouseData()
   const code = searchParams.get('loc')
   const selectedLocationId = code
     ? (locations.find((location) => location.code.toLowerCase() === code.toLowerCase())?.id ?? null)

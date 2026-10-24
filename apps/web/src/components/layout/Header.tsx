@@ -12,16 +12,15 @@ import {
   Warehouse,
 } from 'lucide-react'
 
+import {
+  useNotifications,
+  useProductsList,
+  useMarkNotificationRead,
+  useWarehouseData,
+} from '@/api/hooks'
+import { useWorkspace } from '@/api/workspace-provider'
 import { Badge } from '@/components/ui/Badge'
-import { balances, locations, products } from '@/mocks/warehouse-data'
 import { useDismiss } from '@/lib/hooks'
-import { lowStockProducts, quantityByProduct } from '@/lib/stats'
-
-const quantities = quantityByProduct(balances)
-const lowStockItems = lowStockProducts(products, balances).map((product) => ({
-  product,
-  quantity: quantities.get(product.id) ?? 0,
-}))
 
 function GlobalSearch() {
   const navigate = useNavigate()
@@ -30,11 +29,14 @@ function GlobalSearch() {
   const containerRef = useRef<HTMLDivElement>(null)
   useDismiss(containerRef, () => setOpen(false), open)
 
+  const productsQuery = useProductsList()
+  const { locations } = useWarehouseData()
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (q.length < 1) return { products: [], locations: [] }
     return {
-      products: products
+      products: (productsQuery.data?.data ?? [])
         .filter(
           (product) =>
             product.name.toLowerCase().includes(q) ||
@@ -49,7 +51,7 @@ function GlobalSearch() {
         )
         .slice(0, 3),
     }
-  }, [query])
+  }, [query, productsQuery.data, locations])
 
   const hasResults = results.products.length > 0 || results.locations.length > 0
 
@@ -141,11 +143,13 @@ function GlobalSearch() {
 
 function NotificationBell() {
   const [open, setOpen] = useState(false)
-  const [read, setRead] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useDismiss(containerRef, () => setOpen(false), open)
+  const notificationsQuery = useNotifications()
+  const markRead = useMarkNotificationRead()
 
-  const unreadCount = read ? 0 : lowStockItems.length
+  const notifications = notificationsQuery.data?.data ?? []
+  const unread = notificationsQuery.data?.unread ?? 0
 
   return (
     <div ref={containerRef} className="relative">
@@ -153,16 +157,16 @@ function NotificationBell() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        aria-label={`Notifikasi${unreadCount > 0 ? ` — ${unreadCount} produk di bawah ambang stok` : ''}`}
+        aria-label={`Notifikasi${unread > 0 ? ` — ${unread} belum dibaca` : ''}`}
         className="relative flex h-10 w-10 items-center justify-center rounded-control border border-line bg-surface text-muted hover:bg-canvas hover:text-ink"
       >
         <Bell aria-hidden className="h-[18px] w-[18px]" />
-        {unreadCount > 0 ? (
+        {unread > 0 ? (
           <span
             aria-hidden
             className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white"
           >
-            {unreadCount}
+            {unread}
           </span>
         ) : null}
       </button>
@@ -171,10 +175,14 @@ function NotificationBell() {
         <div className="absolute top-12 right-0 z-40 w-80 overflow-hidden rounded-card border border-line bg-surface shadow-lg">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <p className="text-sm font-bold text-ink">Notifikasi</p>
-            {unreadCount > 0 ? (
+            {unread > 0 ? (
               <button
                 type="button"
-                onClick={() => setRead(true)}
+                onClick={() => {
+                  notifications
+                    .filter((item) => item.readAt === null)
+                    .forEach((item) => markRead.mutate(item.id))
+                }}
                 className="text-xs font-semibold text-primary hover:underline"
               >
                 Tandai dibaca
@@ -182,29 +190,29 @@ function NotificationBell() {
             ) : null}
           </div>
           <div className="max-h-72 overflow-y-auto scroll-slim">
-            <p className="px-4 py-2.5 text-xs leading-relaxed text-muted">
-              <span className="font-semibold text-ink">{lowStockItems.length} produk</span> berada
-              di bawah ambang stok minimum dan perlu segera dipesan ulang (dikelompokkan — data
-              contoh).
-            </p>
-            {lowStockItems.map(({ product, quantity }) => (
-              <Link
-                key={product.id}
-                to={`/inventory/products/${product.id}`}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 border-t border-line/70 px-4 py-2.5 hover:bg-canvas"
-              >
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-danger" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-ink">
-                    {product.name}
-                  </span>
-                  <span className="block text-xs text-muted">
-                    Sisa {quantity} dari ambang {product.reorderThreshold}
-                  </span>
-                </span>
-              </Link>
-            ))}
+            {notificationsQuery.isLoading ? (
+              <p className="px-4 py-4 text-xs font-semibold text-muted">Memuat notifikasi…</p>
+            ) : notifications.length === 0 ? (
+              <p className="px-4 py-4 text-xs text-muted">Belum ada notifikasi.</p>
+            ) : (
+              notifications.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-start gap-3 border-t border-line/70 px-4 py-2.5 first:border-t-0"
+                >
+                  <span
+                    aria-hidden
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.readAt ? 'bg-line' : 'bg-primary'}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-ink">{item.title}</p>
+                    {item.body ? (
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted">{item.body}</p>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       ) : null}
@@ -216,6 +224,7 @@ function ProfileMenu() {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useDismiss(containerRef, () => setOpen(false), open)
+  const { workspace } = useWorkspace()
 
   return (
     <div ref={containerRef} className="relative">
@@ -230,11 +239,18 @@ function ProfileMenu() {
           aria-hidden
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary text-xs font-bold text-white"
         >
-          FR
+          {(workspace?.name ?? 'SS')
+            .split(' ')
+            .map((part) => part[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase()}
         </span>
         <span className="hidden text-left sm:block">
-          <span className="block text-xs font-bold text-ink">Farid Rizky</span>
-          <span className="block text-[11px] text-muted">Admin</span>
+          <span className="block max-w-[120px] truncate text-xs font-bold text-ink">
+            {workspace?.name ?? 'Memuat…'}
+          </span>
+          <span className="block text-[11px] text-muted">Workspace</span>
         </span>
         <ChevronDown aria-hidden className="h-4 w-4 text-muted" />
       </button>
@@ -242,10 +258,12 @@ function ProfileMenu() {
       {open ? (
         <div className="absolute top-12 right-0 z-40 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-lg">
           <div className="border-b border-line px-4 py-3">
-            <p className="text-sm font-bold text-ink">Farid Rizky</p>
-            <p className="truncate text-xs text-muted">farid@technusa.example</p>
+            <p className="text-sm font-bold text-ink">{workspace?.name ?? '—'}</p>
+            <p className="text-xs text-muted">
+              {workspace ? `${workspace.currency} · ${workspace.timezone}` : ''}
+            </p>
             <Badge tone="primary" className="mt-2">
-              Admin
+              Akses Workspace
             </Badge>
           </div>
           <div className="p-1.5">

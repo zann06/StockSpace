@@ -2,16 +2,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { List, Maximize2, Minimize2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
 
 import type { LevelFilter, ViewMode } from '@/types'
+import { useWarehouseData } from '@/api/hooks'
+import { useWorkspace } from '@/api/workspace-provider'
 import { IconButton } from '@/components/ui/IconButton'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { LocationList } from '@/components/warehouse/LocationList'
 import { SceneErrorBoundary } from '@/components/warehouse/SceneErrorBoundary'
 import { WarehouseScene } from '@/components/warehouse/WarehouseScene'
-import {
-  balances as mockBalances,
-  locations as mockLocations,
-  products as mockProducts,
-} from '@/mocks/warehouse-data'
 import { usePrefersReducedMotion } from '@/lib/hooks'
 import { isWebGLAvailable } from '@/lib/webgl'
 
@@ -19,14 +16,14 @@ export interface WarehouseViewProps {
   selectedLocationId: string | null
   onSelect: (id: string | null) => void
   className?: string
-  /** Extra toolbar content (e.g. warehouse selector), rendered on the left. */
+  /** Extra toolbar content (e.g. warehouse name), rendered on the left. */
   toolbarStart?: ReactNode
 }
 
 /**
  * The interactive warehouse: toolbar (view mode, level filter, camera controls,
- * fullscreen, location list) + 3D canvas with an accessible list fallback when
- * WebGL is unavailable.
+ * fullscreen, location list) + 3D canvas fed by the layout API, with an
+ * accessible list fallback when WebGL is unavailable.
  */
 export function WarehouseView({
   selectedLocationId,
@@ -44,6 +41,8 @@ export function WarehouseView({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const reducedMotion = usePrefersReducedMotion()
   const webglAvailable = useMemo(() => isWebGLAvailable(), [])
+  const { workspace: currentWorkspace } = useWorkspace()
+  const { warehouse, locations, balances, products, isLoading, error, refetch } = useWarehouseData()
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current)
@@ -65,11 +64,29 @@ export function WarehouseView({
   const zoom = (direction: 1 | -1) =>
     setZoomCommand((previous) => ({ direction, nonce: (previous?.nonce ?? 0) + 1 }))
 
+  if (error) {
+    return (
+      <div
+        className={`flex h-full flex-col items-center justify-center gap-3 rounded-[14px] bg-canvas p-6 text-center ${className}`}
+      >
+        <p className="text-sm font-bold text-ink">Gagal memuat data gudang</p>
+        <p className="max-w-sm text-xs leading-relaxed text-muted">{error.message}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
+        >
+          Coba lagi
+        </button>
+      </div>
+    )
+  }
+
   const fallbackList = (
     <LocationList
-      locations={mockLocations}
-      balances={mockBalances}
-      products={mockProducts}
+      locations={locations}
+      balances={balances}
+      products={products}
       selectedLocationId={selectedLocationId}
       onSelect={onSelect}
       variant="full"
@@ -84,7 +101,14 @@ export function WarehouseView({
     >
       {/* Toolbar */}
       <div className="z-20 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-3 py-2">
-        {toolbarStart}
+        {toolbarStart ?? (
+          <span className="mr-1 hidden text-xs font-bold text-ink sm:inline">
+            {warehouse.name || currentWorkspace?.name || 'Gudang'}
+            <span className="ml-1.5 font-medium text-muted">
+              · {viewMode === '3d' ? 'Tampilan 3D' : 'Tampilan 2D'}
+            </span>
+          </span>
+        )}
         <SegmentedControl
           aria-label="Mode tampilan warehouse"
           value={viewMode}
@@ -111,21 +135,21 @@ export function WarehouseView({
             aria-label="Perkecil"
             title="Perkecil"
             onClick={() => zoom(-1)}
-            disabled={!webglAvailable}
+            disabled={!webglAvailable || isLoading}
           />
           <IconButton
             icon={ZoomIn}
             aria-label="Perbesar"
             title="Perbesar"
             onClick={() => zoom(1)}
-            disabled={!webglAvailable}
+            disabled={!webglAvailable || isLoading}
           />
           <IconButton
             icon={RotateCcw}
             aria-label="Reset kamera"
             title="Reset kamera ke posisi awal"
             onClick={() => setResetNonce((nonce) => nonce + 1)}
-            disabled={!webglAvailable}
+            disabled={!webglAvailable || isLoading}
           />
           <IconButton
             icon={isFullscreen ? Minimize2 : Maximize2}
@@ -146,13 +170,17 @@ export function WarehouseView({
 
       {/* Scene / fallback */}
       <div className="relative min-h-0 flex-1">
-        {webglAvailable ? (
+        {isLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm font-semibold text-muted">Memuat data gudang…</p>
+          </div>
+        ) : webglAvailable ? (
           <SceneErrorBoundary fallback={fallbackList}>
             <div className="h-full w-full" aria-hidden={showList}>
               <WarehouseScene
-                locations={mockLocations}
-                balances={mockBalances}
-                products={mockProducts}
+                locations={locations}
+                balances={balances}
+                products={products}
                 selectedLocationId={selectedLocationId}
                 onSelect={onSelect}
                 levelFilter={levelFilter}
@@ -173,11 +201,11 @@ export function WarehouseView({
           fallbackList
         )}
 
-        {webglAvailable && showList ? (
+        {webglAvailable && !isLoading && showList ? (
           <LocationList
-            locations={mockLocations}
-            balances={mockBalances}
-            products={mockProducts}
+            locations={locations}
+            balances={balances}
+            products={products}
             selectedLocationId={selectedLocationId}
             onSelect={onSelect}
             variant="overlay"
@@ -185,7 +213,7 @@ export function WarehouseView({
           />
         ) : null}
 
-        {webglAvailable ? (
+        {webglAvailable && !isLoading ? (
           <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex items-center gap-3 rounded-full border border-line bg-surface/90 px-3.5 py-1.5 text-[11px] font-semibold shadow-sm">
             <span className="flex items-center gap-1.5 text-muted">
               <span aria-hidden className="h-2 w-2 rounded-full bg-success" /> Terisi

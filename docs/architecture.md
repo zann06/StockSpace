@@ -73,16 +73,20 @@ remain a useful, optional feature. In Phase 1 the same shape is fed from
 clearly-labelled mock data (`src/mocks/`), so swapping the source for the API
 in Phase 3 is a data-source change, not a rewrite.
 
-### D4 — Mock-data boundary during Phase 1
+### D4 — Data flow & the retired mock boundary
 
-**Decision.** All demo data lives in `apps/web/src/mocks/` behind typed
-modules. Production-bound modules (future `src/api/`) never import from
-`src/mocks/`; pages import mocks only while `VITE_USE_MOCKS` semantics apply
-(Phase 1: always, with a visible "Mode demo" indicator in the header and on
-pages that show derived numbers).
+**Decision.** Since Phase 3 the web app is API-driven: a TanStack Query layer
+(`apps/web/src/api/`) fetches workspace, layout, products, movements, dashboard
+summary, and notifications from Fastify; mutations invalidate the affected
+query keys so balances, history, dashboard metrics, and the 3D scene refresh
+together. Until authentication (Phase 4) the workspace is chosen from
+`GET /api/workspaces` and stored in `localStorage`; movement requests may omit
+`actorId`, in which case the API records the first workspace owner/admin. The
+Phase 1 mock dataset survives **only as test fixtures** (`src/mocks/`) feeding
+a fetch stub — production code never imports it, enforced by review and grep.
 
-**Why.** The PRD allows mock data in Phase 1 but demands clear labelling and a
-clean cut-over to the API.
+**Why.** The PRD requires every displayed metric to derive from persisted data,
+mock data to be clearly labelled, and the 3D scene to reflect the database.
 
 ### D5 — Backend and database
 
@@ -119,13 +123,18 @@ accommodates it.
 
 ### D7 — Quality gates
 
-**Decision.** ESLint 9 (flat config, typescript-eslint) + Prettier + strict
-`tsc` + Vitest unit/component tests in CI (`.github/workflows/ci.yml`), plus a
-production `vite build`. Phase 2 adds API integration tests against a real
-PostgreSQL service in CI; Phase 5 adds an end-to-end smoke test.
+**Decision.** ESLint 9/10 (flat config, typescript-eslint) + Prettier + strict
+`tsc` + Vitest in CI (`.github/workflows/ci.yml`): a `web` job (unit +
+component with an API fetch-stub) and an `api` job running **integration tests
+against a real PostgreSQL service container**. Plus a production build of both
+apps. Phase 4 adds authorization tests; Phase 5 adds an end-to-end smoke test.
 
 **Why.** Every phase must leave `main` green; the PRD's testing section is
 progressively satisfied per phase rather than dumped at the end.
+
+**Forms note (D9).** Movement forms use controlled components + Zod validation
+on submit — react-hook-form is deliberately not introduced until form
+complexity justifies the dependency (re-evaluate when product CRUD UI lands).
 
 ### D8 — Client environment validation
 

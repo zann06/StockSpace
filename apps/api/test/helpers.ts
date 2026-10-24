@@ -27,6 +27,9 @@ export async function createFixtures(): Promise<Fixtures> {
   const warehouse = await prisma.warehouse.create({
     data: { workspaceId: workspace.id, name: 'Gudang Uji', code: 'GDG-TST' },
   })
+  await prisma.workspaceMember.create({
+    data: { workspaceId: workspace.id, userId: actor.id, role: 'OWNER' },
+  })
   const zone = await prisma.zone.create({
     data: { warehouseId: warehouse.id, name: 'Zona Uji', code: 'Z1' },
   })

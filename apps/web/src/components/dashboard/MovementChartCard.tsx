@@ -8,9 +8,9 @@ import {
   YAxis,
 } from 'recharts'
 
+import type { DashboardSummary } from '@/api/types'
 import { Card, CardHeader } from '@/components/ui/Card'
-import { movementSeries } from '@/lib/stats'
-import { movements } from '@/mocks/warehouse-data'
+import { formatWeekday, isSameDay } from '@/lib/format'
 
 interface TooltipPayloadItem {
   dataKey?: string | number
@@ -46,8 +46,16 @@ function ChartTooltip({
 }
 
 /** Stock movement trend — in/out counts per day over the last 7 days. */
-export function MovementChartCard() {
-  const data = movementSeries(movements, new Date(), 7)
+export function MovementChartCard({ series }: { series: DashboardSummary['movementSeries'] }) {
+  const now = new Date()
+  const data = series.map((point) => {
+    const date = new Date(`${point.date}T00:00:00`)
+    return {
+      label: isSameDay(date, now) ? 'Hari ini' : formatWeekday(date),
+      masuk: point.masuk,
+      keluar: point.keluar,
+    }
+  })
 
   return (
     <Card className="flex flex-col">

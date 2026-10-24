@@ -468,3 +468,67 @@ describe('stock movement history', () => {
     })
   })
 })
+
+describe('phase 3 additions', () => {
+  it('lists workspaces without the workspace header', async () => {
+    const response = await testApp.app.inject({ method: 'GET', url: '/api/workspaces' })
+    expect(response.statusCode).toBe(200)
+    const ids = response.json().data.map((item: { id: string }) => item.id)
+    expect(ids).toContain(fixtures.workspaceId)
+    expect(ids).toContain(fixtures.otherWorkspaceId)
+  })
+
+  it('includes balances and products in the warehouse layout', async () => {
+    await seedBalance(fixtures.product.id, fixtures.rackA.id, 2, 9)
+    const response = await call(
+      testApp.app,
+      fixtures.workspaceId,
+      'GET',
+      `/api/warehouses/${fixtures.warehouseId}/layout`
+    )
+    expect(response.statusCode).toBe(200)
+    const layout = response.json().data
+    expect(layout.balances).toHaveLength(1)
+    expect(layout.balances[0]).toMatchObject({ level: 2, quantity: 9 })
+    expect(layout.products[0]).toMatchObject({ sku: 'SKU-UJI-001', reorderThreshold: 5 })
+  })
+
+  it('defaults the actor to the first workspace member when actorId is omitted', async () => {
+    // Call the route directly (the stockIn helper always injects actorId).
+    const response = await call(
+      testApp.app,
+      fixtures.workspaceId,
+      'POST',
+      '/api/stock-movements/stock-in',
+      {
+        productId: fixtures.product.id,
+        quantity: 4,
+        destinationLocationId: fixtures.rackA.id,
+      }
+    )
+    expect(response.statusCode).toBe(200)
+    const movements = await call(testApp.app, fixtures.workspaceId, 'GET', '/api/stock-movements')
+    const movement = movements.json().data[0]
+    expect(movement.actor.name).toBe('Penguji') // fixture member created by createFixtures
+  })
+
+  it('returns topMoved and a 7-day movementSeries in the dashboard summary', async () => {
+    await stockIn({
+      productId: fixtures.product.id,
+      quantity: 10,
+      destinationLocationId: fixtures.rackA.id,
+    })
+    await stockOut({
+      productId: fixtures.product.id,
+      quantity: 3,
+      sourceLocationId: fixtures.rackA.id,
+    })
+    const response = await call(testApp.app, fixtures.workspaceId, 'GET', '/api/dashboard/summary')
+    expect(response.statusCode).toBe(200)
+    const summary = response.json().data
+    expect(summary.movementSeries).toHaveLength(7)
+    expect(summary.movementSeries.at(-1).masuk).toBe(1)
+    expect(summary.movementSeries.at(-1).keluar).toBe(1)
+    expect(summary.topMoved[0]).toMatchObject({ id: fixtures.product.id, moved: 3 })
+  })
+})

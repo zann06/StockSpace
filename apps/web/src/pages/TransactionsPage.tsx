@@ -1,32 +1,27 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import {
-  ArrowLeftRight,
-  PackageMinus,
-  PackagePlus,
-  Plus,
-  SearchX,
-  SlidersHorizontal,
-} from 'lucide-react'
+import { ArrowLeftRight, PackageMinus, PackagePlus, SearchX, SlidersHorizontal } from 'lucide-react'
 
+import type { MovementType } from '@/types'
+import { useMovements, useWarehouseData, type MovementKind } from '@/api/hooks'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { MOVEMENT_TYPE_LABEL } from '@/lib/movement-meta'
 import { PageHeader } from '@/components/common/PageHeader'
+import { MovementForm } from '@/components/transactions/MovementForm'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Input'
 import { formatNumber, formatRelativeTime } from '@/lib/format'
-import { locations, movements, products } from '@/mocks/warehouse-data'
-import type { MovementType } from '@/types'
 
-const TABS: { key: MovementType | 'ALL'; label: string }[] = [
+type Tab = MovementType | 'ALL'
+
+const TABS: { key: Tab; label: string; formKind?: MovementKind }[] = [
   { key: 'ALL', label: 'Semua' },
-  { key: 'IN', label: 'Barang Masuk' },
-  { key: 'OUT', label: 'Barang Keluar' },
-  { key: 'TRANSFER', label: 'Transfer' },
-  { key: 'ADJUSTMENT', label: 'Penyesuaian' },
+  { key: 'IN', label: 'Barang Masuk', formKind: 'stock-in' },
+  { key: 'OUT', label: 'Barang Keluar', formKind: 'stock-out' },
+  { key: 'TRANSFER', label: 'Transfer', formKind: 'transfer' },
+  { key: 'ADJUSTMENT', label: 'Penyesuaian', formKind: 'adjustment' },
 ]
 
 const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
@@ -50,11 +45,6 @@ function quantityText(type: MovementType, quantity: number): string {
   return `+${quantity}`
 }
 
-function locationLabel(id: string | null): string {
-  if (!id) return '—'
-  return locations.find((location) => location.id === id)?.code ?? '?'
-}
-
 function movementQuantityClass(type: MovementType): string {
   if (type === 'IN') return 'text-success'
   if (type === 'OUT') return 'text-danger'
@@ -62,58 +52,42 @@ function movementQuantityClass(type: MovementType): string {
   return 'text-primary'
 }
 
-export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: MovementType | 'ALL' }) {
+export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
   const [searchParams] = useSearchParams()
   const locationFilter = searchParams.get('loc')
-  const [tab, setTab] = useState<MovementType | 'ALL'>(initialTab)
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [query, setQuery] = useState('')
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const locCode = locationFilter?.toLowerCase()
-    return movements
-      .filter((movement) => {
-        if (tab !== 'ALL' && movement.type !== tab) return false
-        if (
-          locCode &&
-          movement.sourceLocationId !== locationFilter &&
-          movement.destinationLocationId !== locationFilter
-        )
-          return false
-        if (q) {
-          const product = products.find((candidate) => candidate.id === movement.productId)
-          const haystack =
-            `${product?.name ?? ''} ${product?.sku ?? ''} ${movement.reference ?? ''} ${movement.actor}`.toLowerCase()
-          if (!haystack.includes(q)) return false
-        }
-        return true
-      })
-      .slice(0, 60)
-  }, [tab, query, locationFilter])
+  const { locations } = useWarehouseData()
+  const activeLocation = locationFilter
+    ? locations.find((location) => location.code.toLowerCase() === locationFilter.toLowerCase())
+    : undefined
 
-  const tabFromQuery = searchParams.get('tab') as MovementType | null
-  const activeTab = tabFromQuery && TABS.some((t) => t.key === tabFromQuery) ? tabFromQuery : tab
+  const movementsQuery = useMovements(
+    tab !== 'ALL'
+      ? { type: tab, locationId: activeLocation?.id }
+      : { locationId: activeLocation?.id }
+  )
+
+  const rows = useMemo(() => {
+    const movements = movementsQuery.data?.data ?? []
+    const q = query.trim().toLowerCase()
+    if (!q) return movements
+    return movements.filter((movement) => {
+      const haystack =
+        `${movement.product.name} ${movement.product.sku} ${movement.reference ?? ''} ${movement.actor.name}`.toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [movementsQuery.data, query])
+
+  const activeFormKind = TABS.find((item) => item.key === tab)?.formKind
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Transaksi"
-        subtitle="Riwayat pergerakan stok — barang masuk, keluar, transfer, dan penyesuaian."
+        subtitle="Catat dan pantau pergerakan stok — barang masuk, keluar, transfer, dan penyesuaian."
         meta={<DemoBadge />}
-        actions={
-          <>
-            <Button
-              disabled
-              title="Formulir transaksi tersedia setelah API Fase 2 terhubung (stock-in/stock-out/transfer/adjustment)."
-            >
-              <Plus aria-hidden className="h-4 w-4" />
-              Transaksi Baru
-            </Button>
-            <span className="hidden items-center gap-1.5 rounded-control border border-dashed border-line px-3 text-xs font-semibold text-muted sm:flex">
-              Stock In · Stock Out · Transfer — Fase 2
-            </span>
-          </>
-        }
       />
 
       {locationFilter ? (
@@ -125,6 +99,8 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
           </Link>
         </div>
       ) : null}
+
+      {activeFormKind ? <MovementForm kind={activeFormKind} /> : null}
 
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
@@ -138,10 +114,10 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
                 key={item.key}
                 type="button"
                 role="tab"
-                aria-selected={activeTab === item.key}
+                aria-selected={tab === item.key}
                 onClick={() => setTab(item.key)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
-                  activeTab === item.key
+                  tab === item.key
                     ? 'bg-primary-soft text-primary'
                     : 'text-muted hover:bg-canvas hover:text-ink'
                 }`}
@@ -159,11 +135,33 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
           />
         </div>
 
-        {rows.length === 0 ? (
+        {movementsQuery.isLoading ? (
+          <p className="px-5 py-10 text-center text-sm font-semibold text-muted">
+            Memuat transaksi…
+          </p>
+        ) : movementsQuery.error ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm font-bold text-ink">Gagal memuat transaksi</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              {movementsQuery.error.message}
+            </p>
+            <button
+              type="button"
+              onClick={() => void movementsQuery.refetch()}
+              className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
+            >
+              Coba lagi
+            </button>
+          </div>
+        ) : rows.length === 0 ? (
           <EmptyState
             icon={SearchX}
             title="Tidak ada transaksi yang cocok"
-            description="Coba ubah filter jenis, kata kunci, atau hapus filter lokasi."
+            description={
+              tab === 'ALL'
+                ? 'Belum ada transaksi tercatat. Gunakan tab di atas untuk mencatat transaksi baru.'
+                : `Belum ada transaksi ${MOVEMENT_TYPE_LABEL[tab as MovementType]} — catat lewat formulir di atas.`
+            }
           />
         ) : (
           <div className="overflow-x-auto scroll-slim">
@@ -195,8 +193,9 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
               </thead>
               <tbody className="divide-y divide-line/70">
                 {rows.map((movement) => {
-                  const product = products.find((candidate) => candidate.id === movement.productId)
                   const Icon = TYPE_ICON[movement.type]
+                  const source = movement.sourceLocation
+                  const destination = movement.destinationLocation
                   return (
                     <tr key={movement.id} className="transition-colors hover:bg-canvas/70">
                       <td className="max-w-[220px] px-4 py-3">
@@ -204,9 +203,9 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
                           to={`/inventory/products/${movement.productId}`}
                           className="block truncate text-sm font-bold text-ink hover:text-primary"
                         >
-                          {product?.name ?? 'Produk'}
+                          {movement.product.name}
                         </Link>
-                        <span className="block text-xs text-muted">{product?.sku}</span>
+                        <span className="block text-xs text-muted">{movement.product.sku}</span>
                       </td>
                       <td className="px-4 py-3">
                         <Badge tone={TYPE_TONE[movement.type]}>
@@ -215,8 +214,13 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted">
-                        {locationLabel(movement.sourceLocationId)} →{' '}
-                        {locationLabel(movement.destinationLocationId)}
+                        {source
+                          ? `${source.code}${movement.sourceLevel ? ` L${movement.sourceLevel}` : ''}`
+                          : '—'}{' '}
+                        →{' '}
+                        {destination
+                          ? `${destination.code}${movement.destinationLevel ? ` L${movement.destinationLevel}` : ''}`
+                          : '—'}
                       </td>
                       <td
                         className={`px-4 py-3 text-right text-sm font-extrabold ${movementQuantityClass(movement.type)}`}
@@ -232,7 +236,7 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
                           <span className="text-xs text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted">{movement.actor}</td>
+                      <td className="px-4 py-3 text-sm text-muted">{movement.actor.name}</td>
                       <td className="px-4 py-3 text-right text-xs text-muted">
                         {formatRelativeTime(movement.createdAt)}
                       </td>
@@ -246,8 +250,10 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Movement
 
         <div className="border-t border-line px-4 py-3">
           <p className="text-xs text-muted">
-            Menampilkan {formatNumber(rows.length)} dari {formatNumber(movements.length)} transaksi
-            (data contoh). Pencatatan transaksi nyata tersedia setelah backend Fase 2 terhubung.
+            Menampilkan {formatNumber(rows.length)} transaksi terbaru
+            {tab !== 'ALL' ? ` (${MOVEMENT_TYPE_LABEL[tab as MovementType]})` : ''}. Setiap
+            transaksi tersimpan permanen — koreksi dilakukan lewat penyesuaian, bukan menghapus
+            riwayat.
           </p>
         </div>
       </Card>

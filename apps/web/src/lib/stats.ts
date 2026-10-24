@@ -1,4 +1,4 @@
-import type { Balance, Movement, Product, StorageLocation } from '@/types'
+import type { Balance, Movement, Product, SceneProduct, StorageLocation } from '@/types'
 import { formatWeekday, isSameDay } from '@/lib/format'
 
 /** Pure inventory computations — unit-tested and shared by every page. */
@@ -98,7 +98,7 @@ export function locationQuantity(locationId: string, balances: Balance[]): numbe
 export function locationStatus(
   location: StorageLocation,
   balances: Balance[],
-  products: Product[]
+  products: SceneProduct[]
 ): 'EMPTY' | 'OCCUPIED' | 'LOW' {
   const locationBalances = balances.filter((balance) => balance.locationId === location.id)
   if (locationBalances.length === 0) return 'EMPTY'

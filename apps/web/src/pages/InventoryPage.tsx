@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Package, PackagePlus, SearchX } from 'lucide-react'
 
+import { useCategories, useProductsList, useWarehouseData } from '@/api/hooks'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -10,37 +11,10 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Input'
 import { formatCurrency, formatNumber } from '@/lib/format'
-import { quantityByProduct } from '@/lib/stats'
-import { balances, locations, products } from '@/mocks/warehouse-data'
-import type { Product } from '@/types'
 
 type SortKey = 'name' | 'stock-asc' | 'value-desc'
 
 const PAGE_SIZE = 8
-
-interface LocationChip {
-  code: string
-  label: string
-  quantity: number
-}
-
-function locationsForProduct(productId: string): LocationChip[] {
-  return balances
-    .filter((balance) => balance.productId === productId)
-    .map((balance) => {
-      const location = locations.find((candidate) => candidate.id === balance.locationId)
-      return {
-        code: location?.code ?? '?',
-        label: location?.label ?? '—',
-        quantity: balance.quantity,
-      }
-    })
-    .sort((a, b) => b.quantity - a.quantity)
-}
-
-function lowForProduct(product: Product, quantity: number): boolean {
-  return quantity < product.reorderThreshold
-}
 
 export function InventoryPage() {
   const navigate = useNavigate()
@@ -52,54 +26,70 @@ export function InventoryPage() {
   // Search text is derived from the URL (?q=) so global search deep links work.
   const query = searchParams.get('q') ?? ''
   const locationFilter = searchParams.get('loc')
-  const quantities = useMemo(() => quantityByProduct(balances), [])
 
-  const categories = useMemo(
-    () => [...new Set(products.map((product) => product.category))].sort(),
-    []
+  const productsQuery = useProductsList(query ? { search: query } : {})
+  const categoriesQuery = useCategories()
+  const { locations, balances } = useWarehouseData()
+
+  const locationByCode = useMemo(
+    () => new Map(locations.map((location) => [location.code.toLowerCase(), location])),
+    [locations]
   )
+  const filterLocation = locationFilter
+    ? locationByCode.get(locationFilter.toLowerCase())
+    : undefined
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const locCode = locationFilter?.toLowerCase()
-    return products
-      .filter((product) => {
-        if (category !== 'ALL' && product.category !== category) return false
-        if (
-          q &&
-          !product.name.toLowerCase().includes(q) &&
-          !product.sku.toLowerCase().includes(q) &&
-          !(product.barcode ?? '').includes(q)
-        )
-          return false
-        if (locCode) {
-          const chips = locationsForProduct(product.id)
-          if (!chips.some((chip) => chip.code.toLowerCase() === locCode)) return false
-        }
-        return true
-      })
-      .sort((a, b) => {
-        if (sort === 'stock-asc') {
-          return (quantities.get(a.id) ?? 0) - (quantities.get(b.id) ?? 0)
-        }
-        if (sort === 'value-desc') {
-          const valueA = (quantities.get(a.id) ?? 0) * a.costPrice
-          const valueB = (quantities.get(b.id) ?? 0) * b.costPrice
-          return valueB - valueA
-        }
-        return a.name.localeCompare(b.name, 'id')
-      })
-  }, [query, category, sort, locationFilter, quantities])
+  const rows = useMemo(() => {
+    let items = productsQuery.data?.data ?? []
+    if (filterLocation) {
+      const productIdsAtLocation = new Set(
+        balances
+          .filter((balance) => balance.locationId === filterLocation.id)
+          .map((b) => b.productId)
+      )
+      items = items.filter((product) => productIdsAtLocation.has(product.id))
+    }
+    if (category !== 'ALL') {
+      items = items.filter(
+        (product) => product.category?.id === category || product.category?.name === category
+      )
+    }
+    const sorted = [...items]
+    if (sort === 'stock-asc') sorted.sort((a, b) => a.totalQuantity - b.totalQuantity)
+    else if (sort === 'value-desc')
+      sorted.sort((a, b) => b.totalQuantity * b.costPrice - a.totalQuantity * a.costPrice)
+    else sorted.sort((a, b) => a.name.localeCompare(b.name, 'id'))
+    return sorted
+  }, [productsQuery.data, filterLocation, balances, category, sort])
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount - 1)
-  const rows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
+  const pageRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
+
+  const balancesByProduct = useMemo(() => {
+    const map = new Map<string, { code: string; quantity: number }[]>()
+    for (const balance of balances) {
+      const location = locations.find((candidate) => candidate.id === balance.locationId)
+      if (!location) continue
+      const existing = map.get(balance.productId) ?? []
+      existing.push({ code: location.code, quantity: balance.quantity })
+      map.set(balance.productId, existing)
+    }
+    for (const list of map.values()) list.sort((a, b) => b.quantity - a.quantity)
+    return map
+  }, [balances, locations])
 
   const applySearch = (value: string) => {
     setPage(0)
     const next = new URLSearchParams(searchParams)
     if (value) next.set('q', value)
     else next.delete('q')
+    setSearchParams(next, { replace: true })
+  }
+
+  const clearLocationFilter = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('loc')
     setSearchParams(next, { replace: true })
   }
 
@@ -110,7 +100,10 @@ export function InventoryPage() {
         subtitle="Daftar produk dan penyebaran stok per lokasi penyimpanan."
         meta={<DemoBadge />}
         actions={
-          <Button disabled title="Pembuatan produk (CRUD) tersedia setelah API Fase 2 terhubung.">
+          <Button
+            disabled
+            title="Pembuatan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
+          >
             <PackagePlus aria-hidden className="h-4 w-4" />
             Tambah Produk
           </Button>
@@ -123,11 +116,7 @@ export function InventoryPage() {
           <Badge tone="primary">{locationFilter.toUpperCase()}</Badge>
           <button
             type="button"
-            onClick={() => {
-              const next = new URLSearchParams(searchParams)
-              next.delete('loc')
-              setSearchParams(next, { replace: true })
-            }}
+            onClick={clearLocationFilter}
             className="text-xs font-bold text-primary hover:underline"
           >
             Hapus filter
@@ -155,9 +144,9 @@ export function InventoryPage() {
               className="h-10 rounded-control border border-line bg-surface px-3 text-sm font-semibold text-ink"
             >
               <option value="ALL">Semua</option>
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+              {(categoriesQuery.data?.data ?? []).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
@@ -176,7 +165,21 @@ export function InventoryPage() {
           </label>
         </div>
 
-        {rows.length === 0 ? (
+        {productsQuery.isLoading ? (
+          <p className="px-5 py-10 text-center text-sm font-semibold text-muted">Memuat produk…</p>
+        ) : productsQuery.error ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm font-bold text-ink">Gagal memuat produk</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{productsQuery.error.message}</p>
+            <button
+              type="button"
+              onClick={() => void productsQuery.refetch()}
+              className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
+            >
+              Coba lagi
+            </button>
+          </div>
+        ) : pageRows.length === 0 ? (
           <EmptyState
             icon={SearchX}
             title="Tidak ada produk yang cocok"
@@ -188,9 +191,7 @@ export function InventoryPage() {
                 onClick={() => {
                   applySearch('')
                   setCategory('ALL')
-                  const next = new URLSearchParams(searchParams)
-                  next.delete('loc')
-                  setSearchParams(next, { replace: true })
+                  clearLocationFilter()
                 }}
               >
                 Reset filter
@@ -223,10 +224,9 @@ export function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/70">
-                {rows.map((product) => {
-                  const quantity = quantities.get(product.id) ?? 0
-                  const low = lowForProduct(product, quantity)
-                  const chips = locationsForProduct(product.id)
+                {pageRows.map((product) => {
+                  const low = product.totalQuantity < product.reorderThreshold
+                  const chips = balancesByProduct.get(product.id) ?? []
                   return (
                     <tr
                       key={product.id}
@@ -253,13 +253,15 @@ export function InventoryPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted">{product.category}</td>
+                      <td className="px-4 py-3 text-sm text-muted">
+                        {product.category?.name ?? '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           {chips.slice(0, 3).map((chip) => (
                             <span
                               key={chip.code}
-                              title={`${chip.label} · ${formatNumber(chip.quantity)} ${product.unit}`}
+                              title={`${chip.code} · ${formatNumber(chip.quantity)} ${product.unit}`}
                               className="inline-flex items-center rounded-md bg-canvas px-2 py-0.5 text-[11px] font-bold text-muted"
                             >
                               {chip.code} · {formatNumber(chip.quantity)}
@@ -274,7 +276,7 @@ export function InventoryPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={`text-sm font-bold ${low ? 'text-danger' : 'text-ink'}`}>
-                          {formatNumber(quantity)}
+                          {formatNumber(product.totalQuantity)}
                         </span>
                         {low ? (
                           <span className="ml-1.5 text-[11px] font-bold text-danger">Menipis</span>
@@ -296,9 +298,9 @@ export function InventoryPage() {
 
         <div className="flex items-center justify-between border-t border-line px-4 py-3">
           <p className="text-xs text-muted" role="status">
-            {filtered.length === 0
+            {rows.length === 0
               ? '0 produk'
-              : `Menampilkan ${safePage * PAGE_SIZE + 1}–${Math.min(filtered.length, (safePage + 1) * PAGE_SIZE)} dari ${formatNumber(filtered.length)} produk`}
+              : `Menampilkan ${safePage * PAGE_SIZE + 1}–${Math.min(rows.length, (safePage + 1) * PAGE_SIZE)} dari ${formatNumber(rows.length)} produk`}
           </p>
           <div className="flex items-center gap-1.5">
             <Button

@@ -1,4 +1,4 @@
-import type { Balance, OccupancyStatus, Product, StorageLocation } from '@/types'
+import type { Balance, OccupancyStatus, SceneProduct, StorageLocation } from '@/types'
 import { Boxes, PackageCheck, PackageOpen, X } from 'lucide-react'
 
 import { formatNumber } from '@/lib/format'
@@ -31,7 +31,7 @@ const STATUS_DOT: Record<OccupancyStatus, string> = {
 interface LocationListProps {
   locations: StorageLocation[]
   balances: Balance[]
-  products: Product[]
+  products: SceneProduct[]
   selectedLocationId: string | null
   onSelect: (id: string | null) => void
   variant?: 'full' | 'overlay'

@@ -52,6 +52,15 @@ export interface Balance {
 
 export type MovementType = 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
 
+/** Product subset the 3D scene and location lists need (from the layout API). */
+export interface SceneProduct {
+  id: string
+  sku: string
+  name: string
+  unit: string
+  reorderThreshold: number
+}
+
 /** 3D scene controls */
 export type LevelFilter = 'ALL' | 1 | 2 | 3
 export type ViewMode = '3d' | '2d'

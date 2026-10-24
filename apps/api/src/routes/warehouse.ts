@@ -15,7 +15,11 @@ export async function warehouseRoutes(app: FastifyInstance) {
     return { data: warehouses }
   })
 
-  /** Full layout for the 3D scene: zones + locations with persisted coordinates. */
+  /**
+   * Full layout for the 3D scene: zones, locations with persisted coordinates,
+   * current balances, and the product summary needed to compute occupancy
+   * status — one request renders the whole warehouse.
+   */
   app.get('/api/warehouses/:id/layout', async (request) => {
     const { id } = parseWith(z.object({ id: z.string().uuid() }), request.params)
 
@@ -25,7 +29,7 @@ export async function warehouseRoutes(app: FastifyInstance) {
     })
     if (!warehouse) throw AppError.notFound(ERRORS.WAREHOUSE_NOT_FOUND, 'Gudang tidak ditemukan.')
 
-    const [zones, locations] = await Promise.all([
+    const [zones, locations, balances, products] = await Promise.all([
       prisma.zone.findMany({
         where: { warehouseId: id },
         select: { id: true, name: true, code: true },
@@ -47,9 +51,17 @@ export async function warehouseRoutes(app: FastifyInstance) {
         },
         orderBy: { code: 'asc' },
       }),
+      prisma.inventoryBalance.findMany({
+        where: { location: { warehouseId: id } },
+        select: { productId: true, locationId: true, level: true, quantity: true },
+      }),
+      prisma.product.findMany({
+        where: { workspaceId: request.workspace.id, active: true },
+        select: { id: true, sku: true, name: true, unit: true, reorderThreshold: true },
+      }),
     ])
 
-    return { data: { warehouse, zones, locations } }
+    return { data: { warehouse, zones, locations, balances, products } }
   })
 }
 

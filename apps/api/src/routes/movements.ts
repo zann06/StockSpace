@@ -1,10 +1,10 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
 import { AppError, ERRORS } from '../lib/errors.js'
 import { prisma } from '../lib/prisma.js'
 import { parseWith } from '../lib/validate.js'
-import { movementService } from '../services/movements.js'
+import { movementService, type MovementInput } from '../services/movements.js'
 
 const movementBodySchema = z
   .object({
@@ -16,8 +16,9 @@ const movementBodySchema = z
     destinationLevel: z.number().int().min(1).max(10).nullish(),
     reference: z.string().trim().max(64).nullish(),
     note: z.string().trim().max(1000).nullish(),
-    // Replaced by the session user once authentication lands (Phase 4).
-    actorId: z.string().uuid(),
+    // Optional until authentication lands (Phase 4): when omitted, the first
+    // owner/admin of the workspace is recorded as the actor.
+    actorId: z.string().uuid().nullish(),
   })
   .strict()
 
@@ -29,12 +30,14 @@ const listQuerySchema = z.object({
   perPage: z.coerce.number().int().min(1).max(100).default(20),
 })
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
 /**
  * Resolve the owning warehouse of the movement's location (source preferred,
  * else destination), verifying the warehouse belongs to the caller's workspace.
  */
 async function resolveWarehouseId(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  tx: Tx,
   workspaceId: string,
   body: { sourceLocationId?: string | null; destinationLocationId?: string | null }
 ): Promise<string> {
@@ -52,46 +55,86 @@ async function resolveWarehouseId(
   return location.warehouseId
 }
 
+/** Default actor (first workspace owner, else any member) for the pre-auth phase. */
+async function resolveActorId(
+  tx: Tx,
+  workspaceId: string,
+  actorId?: string | null
+): Promise<string> {
+  if (actorId) return actorId
+  const member = await tx.workspaceMember.findFirst({
+    where: { workspaceId, role: { in: ['OWNER', 'ADMIN', 'STAFF'] } },
+    orderBy: { role: 'asc' },
+    select: { userId: true },
+  })
+  if (!member) {
+    throw AppError.badRequest(
+      'ACTOR_REQUIRED',
+      'Workspace tidak memiliki anggota yang bisa dicatat sebagai aktor.'
+    )
+  }
+  return member.userId
+}
+
+type MovementOperation = (
+  tx: Tx,
+  workspaceId: string,
+  warehouseId: string,
+  input: MovementInput
+) => ReturnType<typeof movementService.stockIn>
+
+/** Shared pipeline: validate → transaction (warehouse + actor + service call). */
+async function applyMovement(
+  request: FastifyRequest,
+  kind: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT',
+  operation: MovementOperation
+) {
+  const body = parseWith(movementBodySchema, request.body)
+  const data = await prisma.$transaction(async (tx) => {
+    const workspaceId = request.workspace.id
+    const warehouseId = await resolveWarehouseId(tx, workspaceId, body)
+    const actorId = await resolveActorId(tx, workspaceId, body.actorId)
+    const input: MovementInput = {
+      productId: body.productId,
+      quantity: body.quantity,
+      sourceLocationId: body.sourceLocationId ?? null,
+      destinationLocationId: body.destinationLocationId ?? null,
+      sourceLevel: body.sourceLevel ?? null,
+      destinationLevel: body.destinationLevel ?? null,
+      reference: body.reference ?? null,
+      note: body.note ?? null,
+      actorId,
+    }
+    return operation(tx, workspaceId, warehouseId, input)
+  })
+  request.log.info({ movementId: data.id, type: kind }, 'stock movement committed')
+  return { data }
+}
+
 export async function movementRoutes(app: FastifyInstance) {
-  app.post('/api/stock-movements/stock-in', async (request) => {
-    const body = parseWith(movementBodySchema, request.body)
-    const data = await prisma.$transaction(async (tx) => {
-      const warehouseId = await resolveWarehouseId(tx, request.workspace.id, body)
-      return movementService.stockIn(tx, request.workspace.id, warehouseId, body)
-    })
-    request.log.info({ movementId: data.id, type: 'IN' }, 'stock movement committed')
-    return { data }
-  })
+  app.post('/api/stock-movements/stock-in', (request) =>
+    applyMovement(request, 'IN', (tx, workspaceId, warehouseId, input) =>
+      movementService.stockIn(tx, workspaceId, warehouseId, input)
+    )
+  )
 
-  app.post('/api/stock-movements/stock-out', async (request) => {
-    const body = parseWith(movementBodySchema, request.body)
-    const data = await prisma.$transaction(async (tx) => {
-      const warehouseId = await resolveWarehouseId(tx, request.workspace.id, body)
-      return movementService.stockOut(tx, request.workspace.id, warehouseId, body)
-    })
-    request.log.info({ movementId: data.id, type: 'OUT' }, 'stock movement committed')
-    return { data }
-  })
+  app.post('/api/stock-movements/stock-out', (request) =>
+    applyMovement(request, 'OUT', (tx, workspaceId, warehouseId, input) =>
+      movementService.stockOut(tx, workspaceId, warehouseId, input)
+    )
+  )
 
-  app.post('/api/stock-movements/transfer', async (request) => {
-    const body = parseWith(movementBodySchema, request.body)
-    const data = await prisma.$transaction(async (tx) => {
-      const warehouseId = await resolveWarehouseId(tx, request.workspace.id, body)
-      return movementService.transfer(tx, request.workspace.id, warehouseId, body)
-    })
-    request.log.info({ movementId: data.id, type: 'TRANSFER' }, 'stock movement committed')
-    return { data }
-  })
+  app.post('/api/stock-movements/transfer', (request) =>
+    applyMovement(request, 'TRANSFER', (tx, workspaceId, warehouseId, input) =>
+      movementService.transfer(tx, workspaceId, warehouseId, input)
+    )
+  )
 
-  app.post('/api/stock-movements/adjustment', async (request) => {
-    const body = parseWith(movementBodySchema, request.body)
-    const data = await prisma.$transaction(async (tx) => {
-      const warehouseId = await resolveWarehouseId(tx, request.workspace.id, body)
-      return movementService.adjustment(tx, request.workspace.id, warehouseId, body)
-    })
-    request.log.info({ movementId: data.id, type: 'ADJUSTMENT' }, 'stock movement committed')
-    return { data }
-  })
+  app.post('/api/stock-movements/adjustment', (request) =>
+    applyMovement(request, 'ADJUSTMENT', (tx, workspaceId, warehouseId, input) =>
+      movementService.adjustment(tx, workspaceId, warehouseId, input)
+    )
+  )
 
   app.get('/api/stock-movements', async (request) => {
     const query = parseWith(listQuerySchema, request.query)
