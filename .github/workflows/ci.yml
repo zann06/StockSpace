@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: lint, typecheck, test, build
+  web:
+    name: web — lint, typecheck, test, build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +28,58 @@ jobs:
         run: npm run format:check
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint -w apps/web
 
       - name: Type check
-        run: npm run typecheck
+        run: npm run typecheck -w apps/web
 
       - name: Test
-        run: npm run test
+        run: npm run test -w apps/web
 
       - name: Build
-        run: npm run build
+        run: npm run build -w apps/web
+
+  api:
+    name: api — lint, typecheck, test (PostgreSQL), build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stockspace
+          POSTGRES_PASSWORD: stockspace
+          POSTGRES_DB: stockspace
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stockspace -d stockspace"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # CI service containers are reachable on their mapped port; the test
+      # database is created by the API test global setup.
+      DATABASE_URL: postgresql://stockspace:stockspace@localhost:5432/stockspace
+      DATABASE_URL_TEST: postgresql://stockspace:stockspace@localhost:5432/stockspace_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -w apps/api
+
+      - name: Type check
+        run: npm run typecheck -w apps/api
+
+      - name: Test (integration, real PostgreSQL)
+        run: npm run test -w apps/api
+
+      - name: Build
+        run: npm run build -w apps/api

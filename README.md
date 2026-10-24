@@ -6,9 +6,10 @@ StockSpace helps a small business manage inventory while seeing exactly where
 products are stored — receive, store, move, adjust, and issue stock, and explore
 your racks in a real 3D scene that reflects your saved warehouse layout.
 
-> **Status: Phase 1 (UI shell + 3D prototype) complete.** The app currently runs
-> on clearly-labelled demo data; the API, database, and authentication land in
-> Phases 2–4. See the [roadmap](#roadmap) and
+> **Status: Phase 2 (backend + persistence) complete.** The Fastify API,
+> PostgreSQL schema, and stock-movement engine with tested transactional
+> invariants are in place; the web app still runs on clearly-labelled demo
+> data until Phase 3 wires it to the API. See the [roadmap](#roadmap) and
 > [implementation checklist](docs/implementation-checklist.md).
 
 ## Features (current)
@@ -26,7 +27,11 @@ your racks in a real 3D scene that reflects your saved warehouse layout.
 - 📦 **Inventory & product detail** — searchable, sortable, paginated product
   table with per-location stock, thresholds, and movement history.
 - 🧾 **Transactions** — read-only movement history with type filters
-  (recording lands with the API in Phase 2).
+  (the recording API is live — the web UI connects to it in Phase 3).
+- 🗄️ **REST API + PostgreSQL** — Fastify API with Zod validation, Prisma
+  migrations, and stock-in/out/transfer/adjustment inside database
+  transactions (overselling is impossible by construction and covered by
+  integration tests, including concurrent requests).
 - 🔍 **Global search** — products by name/SKU/barcode, locations by code.
 - 🔔 **Grouped low-stock notifications**.
 - 📱 **Responsive** — desktop sidebar collapses to an off-canvas menu on mobile.
@@ -47,26 +52,40 @@ screenshots will be added during Phase 5 release hardening.
 | 3D       | React Three Fiber, Drei, Three.js (procedural geometry, no models)  |
 | Charts   | Recharts                                                            |
 | Icons    | lucide-react (ISC) · Font: Plus Jakarta Sans via Fontsource (OFL)   |
-| Backend  | Fastify + TypeScript (Phase 2) · Zod validation                      |
-| Database | PostgreSQL 16 + Prisma (Phase 2)                                     |
+| Backend  | Fastify 5 + TypeScript · Zod validation                              |
+| Database | PostgreSQL 16 + Prisma 6 (migrations, seed)                          |
 | Infra    | Docker Compose, GitHub Actions CI, nginx for static hosting          |
 
 ## Quick start (local development)
 
-Requirements: **Node.js ≥ 20.19** (22 recommended; `.nvmrc` pins 22) and npm.
+Requirements: **Node.js ≥ 20.19** (22 recommended; `.nvmrc` pins 22), npm, and
+Docker (for PostgreSQL).
 
 ```bash
-npm install       # installs all workspaces
-npm run dev       # start the web app on http://localhost:5173
+npm install       # installs all workspaces and generates the Prisma client
+npm run db:up     # start PostgreSQL (host port 5433; a local Postgres on 5432 is fine)
+cp .env.example .env   # then adjust if needed
+npm run db:migrate     # apply migrations
+npm run db:seed        # load the fictional demo workspace (Toko TechNusa)
+
+npm run dev            # web app on http://localhost:5173
+npm run dev:api        # REST API on http://localhost:4000
+```
+
+The seeded workspace id is printed by `db:seed` — send it as the
+`X-Workspace-Id` header on API calls (replaced by real sessions in Phase 4):
+
+```bash
+curl -H "X-Workspace-Id: <id>" http://localhost:4000/api/dashboard/summary
 ```
 
 Quality gates:
 
 ```bash
-npm run lint         # ESLint
+npm run lint         # ESLint (web + api)
 npm run typecheck    # tsc (strict)
-npm run test         # Vitest (unit + component)
-npm run build        # production build
+npm run test         # Vitest (web unit/component + api integration; api needs db:up)
+npm run build        # production build (web + api)
 npm run format:check # Prettier
 ```
 
@@ -107,8 +126,8 @@ stockspace/
 
 - [x] **Phase 0** — monorepo, TS/ESLint/Prettier, env validation, Docker, CI
 - [x] **Phase 1** — UI shell, dashboard, interactive 3D prototype (demo data)
-- [ ] **Phase 2** — Fastify API, PostgreSQL + Prisma, stock-in/out/transfer/
-      adjustment with DB transactions, integration tests
+- [x] **Phase 2** — Fastify API, PostgreSQL + Prisma, stock-in/out/transfer/
+      adjustment with DB transactions, integration tests (26/26 pass)
 - [ ] **Phase 3** — connect 3D & dashboard to real data
 - [ ] **Phase 4** — authentication (better-auth), roles & workspace scoping,
       reports, CSV export, notifications

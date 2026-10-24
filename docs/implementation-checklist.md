@@ -41,17 +41,30 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] Unit + component tests (stats, mock invariants, shell, fallback)
 - [x] Lint, typecheck, tests, production build all run and pass
 
-## Phase 2 — Backend and persistence (next)
+## Phase 2 — Backend and persistence ✅ (current)
 
-- [ ] Prisma schema (users, workspaces, warehouses, zones, storage_locations,
-      categories, products, inventory_balances, stock_movements, notifications)
-      + migrations
-- [ ] Fastify app scaffold (`apps/api`): config, logging, error handling, Zod
-- [ ] CRUD: products, categories, warehouses/zones/locations
-- [ ] Stock-in, stock-out, transfer, adjustment inside DB transactions with
-      row locking; reject negative stock
-- [ ] Integration tests for inventory invariants (incl. concurrency)
-- [ ] Fictional seed data
+- [x] Prisma schema (users, workspaces, workspace_members, warehouses, zones,
+      storage_locations, categories, products, inventory_balances,
+      stock_movements, notifications) + init migration incl. `CHECK
+      (quantity >= 0)` and `quantity <> 0` constraints
+- [x] Fastify app scaffold (`apps/api`): Zod env validation, structured
+      logging with secret redaction, deliberate CORS, JSON error handler
+      (AppError / ZodError / Prisma codes → stable status codes)
+- [x] Workspace scoping preHandler (`X-Workspace-Id`, validated against the
+      database; membership checks arrive with auth in Phase 4)
+- [x] CRUD: products (list/search/paginate, create, detail with balances +
+      history, patch with immutable SKU), categories, warehouses + layout,
+      location inventory
+- [x] Stock-in, stock-out, transfer, adjustment inside Prisma interactive
+      transactions; decrements via conditional `UPDATE … WHERE quantity >= n`
+- [x] Reject negative stock (service + DB constraint), zero/negative
+      quantities, same-source transfers, adjustments without reason
+- [x] Integration tests (real PostgreSQL via Docker / CI service container):
+      26 tests covering invariants incl. concurrent oversell, rollback on
+      failed movement insert, cross-workspace access, duplicate SKU
+- [x] Fictional seed data ("Toko TechNusa") mirroring the Phase 1 web mocks
+- [x] API Dockerfile + compose `api` service (migrate-deploy on boot)
+- [x] CI: dedicated `api` job with a PostgreSQL service container
 
 ## Phase 3 — Connect 3D to real data
 

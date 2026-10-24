@@ -84,17 +84,24 @@ pages that show derived numbers).
 **Why.** The PRD allows mock data in Phase 1 but demands clear labelling and a
 clean cut-over to the API.
 
-### D5 — Backend and database (planned, Phase 2)
+### D5 — Backend and database
 
-**Decision.** Node.js + TypeScript + Fastify REST API under `apps/api`,
-PostgreSQL 16 + Prisma ORM (schema/migrations/seed under `prisma/`), Zod for
-every external input, `docker-compose.yml` already provides the `db` service.
-Stock-in/out/transfer/adjustment run inside database transactions with
-pessimistic locking on affected balance rows; movements are append-only.
+**Decision.** Node.js + TypeScript + Fastify REST API under `apps/api`
+(ESM, `NodeNext`), PostgreSQL 16 + Prisma ORM (schema/migrations/seed under
+`prisma/`), Zod for every external input, `docker-compose.yml` provides the
+`db` + `api` + `web` services. Stock-in/out/transfer/adjustment run inside
+Prisma interactive transactions; decrements are single conditional
+`UPDATE … WHERE quantity >= n` statements, which serialize concurrent writers
+and make overselling impossible (verified by integration tests, including a
+parallel-requests case). Movements are append-only. The database additionally
+enforces `CHECK (quantity >= 0)`. Workspace scoping is enforced by a preHandler
+resolving `X-Workspace-Id`; it becomes membership-based when auth lands
+(Phase 4). See [`database.md`](database.md) for the full contract.
 
 **Why.** PRD-recommended, minimal, and consistent with the recruitment brief
 (TypeScript, Docker, Linux/VPS). No Redis, no microservices — not needed for
-the MVP.
+the MVP. The compose `db` service publishes host port **5433** to avoid
+clashing with a locally installed PostgreSQL on 5432.
 
 ### D6 — Authentication approach (planned, Phase 4)
 
