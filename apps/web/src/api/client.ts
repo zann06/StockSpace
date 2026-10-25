@@ -35,7 +35,8 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (isDemoMode()) {
-    return (await demoFetch(path, options)) as T
+    const response = await demoFetch(path, options)
+    return parseResponse<T>(response)
   }
 
   let response: Response
@@ -57,22 +58,35 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   }
 
   if (!response.ok) {
-    let code = 'UNKNOWN'
-    let message = `Permintaan gagal (${response.status}).`
-    try {
-      const payload = (await response.json()) as {
-        error?: { code?: string; message?: string }
-        code?: string
-        message?: string
-      }
-      code = payload.error?.code ?? payload.code ?? code
-      message = payload.error?.message ?? payload.message ?? message
-    } catch {
-      // non-JSON error body — keep the generic message
-    }
-    throw new ApiError(response.status, code, message)
+    throw await toApiError(response)
   }
 
+  if (response.status === 204) return undefined as T
+  return (await response.json()) as T
+}
+
+/** Maps a non-2xx response to a readable ApiError (shared by fetch + demo). */
+async function toApiError(response: Response): Promise<ApiError> {
+  let code = 'UNKNOWN'
+  let message = `Permintaan gagal (${response.status}).`
+  try {
+    const payload = (await response.json()) as {
+      error?: { code?: string; message?: string }
+      code?: string
+      message?: string
+    }
+    code = payload.error?.code ?? payload.code ?? code
+    message = payload.error?.message ?? payload.message ?? message
+  } catch {
+    // non-JSON error body — keep the generic message
+  }
+  return new ApiError(response.status, code, message)
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw await toApiError(response)
+  }
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
