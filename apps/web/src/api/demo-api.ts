@@ -141,6 +141,9 @@ function apiProducts() {
 function apiMovements() {
   return state.movements.map((movement) => ({
     ...movement,
+    product:
+      mockProducts.find((candidate) => candidate.id === movement.productId) ??
+      { id: movement.productId, sku: '—', name: 'Produk tidak dikenal', unit: 'pcs' },
     actor: { id: 'user-1', name: movement.actor },
     sourceLocation: locations.find((location) => location.id === movement.sourceLocationId) ?? null,
     destinationLocation:
