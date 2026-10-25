@@ -6,10 +6,11 @@ StockSpace helps a small business manage inventory while seeing exactly where
 products are stored — receive, store, move, adjust, and issue stock, and explore
 your racks in a real 3D scene that reflects your saved warehouse layout.
 
-> **Status: Phase 4 (auth, roles, reports) complete.** Sign in with email +
-> cookie sessions (better-auth), server-enforced workspace roles, filtered
-> movement reports with CSV export, and grouped low-stock notifications — all
-> on top of the live Fastify API + PostgreSQL. See the
+> **Status: MVP complete (Phases 0–5).** Interactive 3D warehouse, live
+> PostgreSQL data, transactional stock movements, email/password sign-in with
+> server-enforced roles, filtered reports + CSV export, grouped low-stock
+> notifications, rate limiting, an axe-checked accessibility pass, and a
+> Playwright end-to-end smoke test. See the
 > [roadmap](#roadmap) and [implementation checklist](docs/implementation-checklist.md).
 
 ## Features (current)
@@ -41,8 +42,13 @@ visible **"Mode Demo"** badge.
 
 ## Screenshots
 
-The UI is built against `design-reference.png` (repository root). Real
-screenshots will be added during Phase 5 release hardening.
+Built as real React components against `design-reference.png` (repository
+root); captured by the Playwright smoke test against the live stack.
+
+| | |
+| --- | --- |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Warehouse 3D](docs/screenshots/warehouse.png) |
+| ![Inventory](docs/screenshots/inventory.png) | ![Login](docs/screenshots/login.png) |
 
 ## Tech stack
 
@@ -87,6 +93,8 @@ npm run typecheck    # tsc (strict)
 npm run test         # Vitest (web unit/component + api integration; api needs db:up)
 npm run build        # production build (web + api)
 npm run format:check # Prettier
+npm run test:e2e -w apps/web   # Playwright smoke + axe a11y scan (needs db:up;
+                               # boots the API + web automatically, seeds stockspace_e2e)
 ```
 
 **Sign in** at `/login` with the seeded development accounts (fictional
@@ -127,8 +135,9 @@ stockspace/
 
 - [Architecture decisions](docs/architecture.md)
 - [Implementation checklist & phase status](docs/implementation-checklist.md)
-- Database docs (Phase 2) · [3D warehouse docs](docs/3d-warehouse.md) (Phase 2–3) ·
-  VPS deployment guide (Phase 5)
+- [Database & consistency model](docs/database.md)
+- [3D warehouse internals](docs/3d-warehouse.md)
+- [VPS deployment guide (SSH + Docker)](docs/deployment-vps.md)
 
 ## Roadmap
 
@@ -138,7 +147,7 @@ stockspace/
       adjustment with DB transactions, integration tests (26/26 pass)
 - [x] **Phase 3** — web app wired to the API (3D scene, dashboard, transactions)
 - [x] **Phase 4** — better-auth sign-in/sessions, server-side roles (OWNER/ADMIN/STAFF/VIEWER), workspace membership checks, filtered reports + CSV export, grouped low-stock notifications
-- [ ] **Phase 5** — release hardening, E2E smoke test, VPS deployment guide
+- [x] **Phase 5** — a11y pass (axe in CI), Playwright E2E smoke test, rate limiting, screenshots, [VPS deployment guide](docs/deployment-vps.md)
 
 ## Contributing
 

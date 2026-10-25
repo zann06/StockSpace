@@ -236,7 +236,6 @@ function ProfileMenu() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        aria-label="Menu pengguna"
         className="flex items-center gap-2 rounded-control border border-line bg-surface p-1 pr-2 hover:bg-canvas"
       >
         <span
@@ -252,6 +251,7 @@ function ProfileMenu() {
           <span className="block text-[11px] text-muted">{roleLabel}</span>
         </span>
         <ChevronDown aria-hidden className="h-4 w-4 text-muted" />
+        <span className="sr-only">buka menu pengguna</span>
       </button>
 
       {open ? (
@@ -281,7 +281,7 @@ function ProfileMenu() {
                 })
               }}
               disabled={signOut.isPending}
-              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-semibold text-danger hover:bg-danger-soft disabled:opacity-60"
+              className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm font-semibold text-danger-fg hover:bg-danger-soft disabled:opacity-60"
             >
               <LogOut aria-hidden className="h-4 w-4" /> {signOut.isPending ? 'Keluar…' : 'Keluar'}
             </button>

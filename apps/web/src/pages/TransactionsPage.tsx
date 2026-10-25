@@ -46,9 +46,9 @@ function quantityText(type: MovementType, quantity: number): string {
 }
 
 function movementQuantityClass(type: MovementType): string {
-  if (type === 'IN') return 'text-success'
-  if (type === 'OUT') return 'text-danger'
-  if (type === 'ADJUSTMENT') return 'text-warning'
+  if (type === 'IN') return 'text-success-fg'
+  if (type === 'OUT') return 'text-danger-fg'
+  if (type === 'ADJUSTMENT') return 'text-warning-fg'
   return 'text-primary'
 }
 

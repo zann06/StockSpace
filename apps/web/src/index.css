@@ -13,7 +13,7 @@
 
   /* Neutrals — dark navy ink, muted blue-gray */
   --color-ink: #151b4a;
-  --color-muted: #7a83a8;
+  --color-muted: #5c6480; /* darkened from #7a83a8 for WCAG AA contrast on white/canvas */
   --color-canvas: #f7f8fc;
   --color-surface: #ffffff;
   --color-line: #e8ebf5;
@@ -25,6 +25,11 @@
   --color-warning-soft: #fdf2e1;
   --color-danger: #f0445e;
   --color-danger-soft: #fde9ed;
+  /* Text-safe variants of the status colours (WCAG AA on white and *-soft) —
+     use for coloured text; the plain tokens stay for dots, bars, and fills. */
+  --color-success-fg: #047857;
+  --color-warning-fg: #8a5300;
+  --color-danger-fg: #b81f3f;
 
   --radius-card: 1rem;
   --radius-control: 0.75rem;

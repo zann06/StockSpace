@@ -74,7 +74,7 @@ export function LoginPage() {
           {error ? (
             <p
               role="alert"
-              className="mt-4 rounded-control bg-danger-soft px-3.5 py-2.5 text-xs font-semibold text-danger"
+              className="mt-4 rounded-control bg-danger-soft px-3.5 py-2.5 text-xs font-semibold text-danger-fg"
             >
               {error}
             </p>

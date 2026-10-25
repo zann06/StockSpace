@@ -4,9 +4,9 @@ type Tone = 'primary' | 'success' | 'warning' | 'danger' | 'neutral'
 
 const toneClasses: Record<Tone, string> = {
   primary: 'bg-primary-soft text-primary',
-  success: 'bg-success-soft text-success',
-  warning: 'bg-warning-soft text-warning',
-  danger: 'bg-danger-soft text-danger',
+  success: 'bg-success-soft text-success-fg',
+  warning: 'bg-warning-soft text-warning-fg',
+  danger: 'bg-danger-soft text-danger-fg',
   neutral: 'bg-canvas text-muted',
 }
 

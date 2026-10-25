@@ -1,4 +1,5 @@
 import cors from '@fastify/cors'
+import rateLimit from '@fastify/rate-limit'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { Prisma } from '@prisma/client'
 import { ZodError } from 'zod'
@@ -18,7 +19,8 @@ import { reportRoutes } from './routes/reports.js'
 import { categoryRoutes, locationRoutes, warehouseRoutes } from './routes/warehouse.js'
 import { workspaceRoutes } from './routes/workspaces.js'
 
-export function buildApp(): FastifyInstance {
+/** Rate limiting is on by default; disabled under `npm test` unless forced. */
+export async function buildApp(options: { rateLimit?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: config.LOG_LEVEL,
@@ -31,9 +33,28 @@ export function buildApp(): FastifyInstance {
   })
 
   // Cookie sessions require credentialed CORS with explicit origins.
-  app.register(cors, { origin: config.CORS_ORIGIN.split(','), credentials: true })
+  await app.register(cors, { origin: config.CORS_ORIGIN.split(','), credentials: true })
+
+  if (options.rateLimit ?? process.env.NODE_ENV !== 'test') {
+    // Awaited so the plugin's onRoute hook sees every route below.
+    await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute' })
+  }
 
   app.setErrorHandler((error, request, reply) => {
+    // Pass through framework/plugin 4xx errors (rate limit, body parser, …)
+    // with their original status instead of collapsing them into 500.
+    const pluginStatus = (error as { statusCode?: number }).statusCode
+    if (!(error instanceof AppError) && pluginStatus && pluginStatus >= 400 && pluginStatus < 500) {
+      return reply.status(pluginStatus).send({
+        error: {
+          code: pluginStatus === 429 ? 'RATE_LIMITED' : 'BAD_REQUEST',
+          message:
+            pluginStatus === 429
+              ? 'Terlalu banyak permintaan — coba lagi beberapa saat lagi.'
+              : (error as Error).message,
+        },
+      })
+    }
     if (error instanceof AppError) {
       return reply
         .status(error.statusCode)
@@ -78,6 +99,10 @@ export function buildApp(): FastifyInstance {
   app.route({
     method: ['GET', 'POST'],
     url: '/api/auth/*',
+    config: {
+      // Stricter budget for credential endpoints (PRD §12).
+      rateLimit: { max: 20, timeWindow: '1 minute' },
+    },
     async handler(request, reply) {
       try {
         const url = new URL(request.url, `http://${request.headers.host}`)

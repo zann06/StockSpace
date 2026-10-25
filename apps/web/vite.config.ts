@@ -17,5 +17,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
     clearMocks: true,
+    // Playwright specs live in e2e/ — never collect them here.
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 })

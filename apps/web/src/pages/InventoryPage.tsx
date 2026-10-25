@@ -275,11 +275,15 @@ export function InventoryPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className={`text-sm font-bold ${low ? 'text-danger' : 'text-ink'}`}>
+                        <span
+                          className={`text-sm font-bold ${low ? 'text-danger-fg' : 'text-ink'}`}
+                        >
                           {formatNumber(product.totalQuantity)}
                         </span>
                         {low ? (
-                          <span className="ml-1.5 text-[11px] font-bold text-danger">Menipis</span>
+                          <span className="ml-1.5 text-[11px] font-bold text-danger-fg">
+                            Menipis
+                          </span>
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-muted">

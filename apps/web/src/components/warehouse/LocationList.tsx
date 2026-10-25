@@ -18,8 +18,8 @@ const STATUS_LABEL: Record<OccupancyStatus, string> = {
 
 const STATUS_CLASS: Record<OccupancyStatus, string> = {
   EMPTY: 'text-muted',
-  OCCUPIED: 'text-success',
-  LOW: 'text-danger',
+  OCCUPIED: 'text-success-fg',
+  LOW: 'text-danger-fg',
 }
 
 const STATUS_DOT: Record<OccupancyStatus, string> = {
@@ -124,7 +124,7 @@ export function LocationList({
   return (
     <div className="flex h-full flex-col overflow-y-auto scroll-slim">
       {showUnavailableNotice ? (
-        <p className="m-2 mb-0 rounded-control bg-warning-soft px-3 py-2 text-xs leading-relaxed text-warning">
+        <p className="m-2 mb-0 rounded-control bg-warning-soft px-3 py-2 text-xs leading-relaxed text-warning-fg">
           Tampilan 3D tidak tersedia di perangkat ini — menampilkan daftar lokasi sebagai
           alternatif.
         </p>

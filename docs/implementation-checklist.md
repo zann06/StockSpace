@@ -84,8 +84,8 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 
 ## Phase 5 — Release hardening
 
-- [ ] Responsive + accessibility pass (contrast, focus, a11y audit)
-- [ ] End-to-end smoke test (login → inventory → stock-in → dashboard)
-- [ ] README screenshots, CONTRIBUTING polish, SECURITY.md review
-- [ ] VPS deployment guide over SSH (docs/deployment-vps.md)
-- [ ] Verify fresh-clone setup from documented instructions
+- [x] Responsive + accessibility pass (contrast, focus, a11y audit)
+- [x] End-to-end smoke test (login → inventory → stock-in → dashboard)
+- [x] README screenshots, CONTRIBUTING polish, SECURITY.md review
+- [x] VPS deployment guide over SSH (docs/deployment-vps.md)
+- [x] Verify fresh-clone setup from documented instructions

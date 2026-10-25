@@ -124,9 +124,9 @@ export function WarehouseView({
           onChange={(value) => setLevelFilter(value)}
           options={[
             { value: 'ALL' as LevelFilter, label: 'Semua' },
-            { value: 1 as LevelFilter, label: 'L1', 'aria-label': 'Level 1' },
-            { value: 2 as LevelFilter, label: 'L2', 'aria-label': 'Level 2' },
-            { value: 3 as LevelFilter, label: 'L3', 'aria-label': 'Level 3' },
+            { value: 1 as LevelFilter, label: 'L1', 'aria-label': 'Level L1' },
+            { value: 2 as LevelFilter, label: 'L2', 'aria-label': 'Level L2' },
+            { value: 3 as LevelFilter, label: 'L3', 'aria-label': 'Level L3' },
           ]}
         />
         <div className="ml-auto flex items-center gap-1.5">

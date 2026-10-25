@@ -38,4 +38,4 @@ you prefer to remain anonymous.
 - Input validation with Zod on every external boundary (server-side).
 - Parameterized queries via Prisma.
 - Append-only stock movement history; corrections via compensating adjustments.
-- Rate limiting on authentication endpoints (Phase 4).
+- Rate limiting on authentication endpoints (20/min) and a global 300/min budget, returning 429.

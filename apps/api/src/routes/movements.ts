@@ -102,7 +102,10 @@ async function applyMovement(
 
 export async function movementRoutes(app: FastifyInstance) {
   // Recording stock movements requires at least STAFF (PRD §4).
-  const staffOnly = { preHandler: requireRole('STAFF') }
+  const staffOnly = {
+    preHandler: requireRole('STAFF'),
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+  }
 
   app.post('/api/stock-movements/stock-in', staffOnly, (request) =>
     applyMovement(request, 'IN', (tx, workspaceId, warehouseId, input) =>

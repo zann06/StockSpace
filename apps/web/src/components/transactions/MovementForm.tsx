@@ -205,7 +205,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         {/* Product */}
         <div className="md:col-span-2">
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-            Produk <span className="text-danger">*</span>
+            Produk <span className="text-danger-fg">*</span>
             <select
               value={form.productId}
               onChange={(event) => setField('productId', event.target.value)}
@@ -221,7 +221,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
             </select>
           </label>
           {fieldErrors.productId ? (
-            <p className="mt-1 text-xs font-semibold text-danger">{fieldErrors.productId}</p>
+            <p className="mt-1 text-xs font-semibold text-danger-fg">{fieldErrors.productId}</p>
           ) : null}
         </div>
 
@@ -271,7 +271,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         <div>
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
             Jumlah {kind === 'adjustment' ? '(± untuk koreksi)' : ''}{' '}
-            <span className="text-danger">*</span>
+            <span className="text-danger-fg">*</span>
             <input
               type="number"
               value={form.quantity}
@@ -282,7 +282,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
             />
           </label>
           {fieldErrors.quantity ? (
-            <p className="mt-1 text-xs font-semibold text-danger">{fieldErrors.quantity}</p>
+            <p className="mt-1 text-xs font-semibold text-danger-fg">{fieldErrors.quantity}</p>
           ) : null}
         </div>
 
@@ -304,7 +304,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         <div className="md:col-span-2">
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
             {meta.needsReason ? 'Alasan Penyesuaian' : 'Catatan (opsional)'}
-            {meta.needsReason ? <span className="text-danger">*</span> : null}
+            {meta.needsReason ? <span className="text-danger-fg">*</span> : null}
             <textarea
               value={form.note}
               onChange={(event) => setField('note', event.target.value)}
@@ -321,7 +321,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
             />
           </label>
           {fieldErrors.note ? (
-            <p className="mt-1 text-xs font-semibold text-danger">{fieldErrors.note}</p>
+            <p className="mt-1 text-xs font-semibold text-danger-fg">{fieldErrors.note}</p>
           ) : null}
         </div>
 
@@ -333,13 +333,13 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
       </form>
 
       {success ? (
-        <p className="mt-4 flex items-start gap-2 rounded-control bg-success-soft px-3.5 py-3 text-xs font-semibold text-success">
+        <p className="mt-4 flex items-start gap-2 rounded-control bg-success-soft px-3.5 py-3 text-xs font-semibold text-success-fg">
           <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           {success}
         </p>
       ) : null}
       {failure ? (
-        <p className="mt-4 flex items-start gap-2 rounded-control bg-danger-soft px-3.5 py-3 text-xs font-semibold text-danger">
+        <p className="mt-4 flex items-start gap-2 rounded-control bg-danger-soft px-3.5 py-3 text-xs font-semibold text-danger-fg">
           <XCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           {failure}
         </p>
@@ -377,7 +377,7 @@ function LocationPicker({
   return (
     <div>
       <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-        {label} {required ? <span className="text-danger">*</span> : null}
+        {label} {required ? <span className="text-danger-fg">*</span> : null}
         <select
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
@@ -410,7 +410,7 @@ function LocationPicker({
           </label>
         </div>
       ) : null}
-      {error ? <p className="mt-1 text-xs font-semibold text-danger">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs font-semibold text-danger-fg">{error}</p> : null}
       {balanceHint ? <p className="mt-1 text-[11px] text-muted">{balanceHint}</p> : null}
     </div>
   )

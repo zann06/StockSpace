@@ -66,7 +66,7 @@ Node.js ≥ 20.19 is required (`.nvmrc` pins 22: `nvm use`).
 ## Pull request checklist
 
 - [ ] Branch is up to date with `main`
-- [ ] `npm run format && npm run lint && npm run typecheck && npm run test && npm run build` all pass locally
+- [ ] `npm run format`, `lint`, `typecheck`, `test`, `build`, and (for UI changes) `test:e2e` all pass locally
 - [ ] Tests added/updated for the change
 - [ ] No secrets, credentials, or real business data in the diff
 - [ ] Docs updated (README / docs/) when the change affects setup or behaviour

@@ -31,10 +31,10 @@ function movementQuantityText(type: MovementType, quantity: number): string {
 }
 
 const MOVEMENT_QTY_CLASS: Record<MovementType, string> = {
-  IN: 'text-success',
-  OUT: 'text-danger',
+  IN: 'text-success-fg',
+  OUT: 'text-danger-fg',
   TRANSFER: 'text-primary',
-  ADJUSTMENT: 'text-warning',
+  ADJUSTMENT: 'text-warning-fg',
 }
 
 const STATUS_BADGE = {
@@ -186,12 +186,12 @@ export function LocationDetailPanel({
                         </div>
                         <div className="text-right">
                           <span
-                            className={`block text-sm font-bold ${low ? 'text-danger' : 'text-ink'}`}
+                            className={`block text-sm font-bold ${low ? 'text-danger-fg' : 'text-ink'}`}
                           >
                             {formatNumber(line.quantity)}
                           </span>
                           {low ? (
-                            <span className="block text-[11px] font-semibold text-danger">
+                            <span className="block text-[11px] font-semibold text-danger-fg">
                               Menipis
                             </span>
                           ) : (

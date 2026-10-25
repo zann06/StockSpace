@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
+import { buildApp } from '../src/app.js'
 import { prisma } from '../src/lib/prisma.js'
 import {
   buildTestApp,
@@ -664,5 +665,27 @@ describe('reports & CSV export', () => {
   it('requires authentication for reports', async () => {
     const response = await testApp.app.inject({ method: 'GET', url: '/api/reports/low-stock' })
     expect(response.statusCode).toBe(401)
+  })
+})
+
+describe('rate limiting (PRD §12)', () => {
+  it('returns 429 after excessive auth attempts when enabled', async () => {
+    const limitedApp = await buildApp({ rateLimit: true })
+    await limitedApp.ready()
+    try {
+      let lastStatus = 0
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const response = await limitedApp.inject({
+          method: 'POST',
+          url: '/api/auth/sign-in/email',
+          headers: { 'content-type': 'application/json' },
+          payload: JSON.stringify({ email: 'nobody@test.local', password: 'wrong-password-1' }),
+        })
+        lastStatus = response.statusCode
+      }
+      expect(lastStatus).toBe(429)
+    } finally {
+      await limitedApp.close()
+    }
   })
 })

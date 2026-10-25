@@ -30,7 +30,7 @@ export interface TestApp {
 }
 
 export async function buildTestApp(): Promise<TestApp> {
-  const app = buildApp()
+  const app = await buildApp()
   await app.ready()
   return { app, close: () => app.close() }
 }

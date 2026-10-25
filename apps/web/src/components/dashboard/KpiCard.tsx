@@ -21,14 +21,14 @@ export interface KpiCardProps {
 
 const ICON_TONE = {
   primary: 'bg-primary-soft text-primary',
-  danger: 'bg-danger-soft text-danger',
-  success: 'bg-success-soft text-success',
-  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger-fg',
+  success: 'bg-success-soft text-success-fg',
+  warning: 'bg-warning-soft text-warning-fg',
 } as const
 
 const DELTA_TONE = {
-  positive: 'text-success bg-success-soft',
-  negative: 'text-danger bg-danger-soft',
+  positive: 'text-success-fg bg-success-soft',
+  negative: 'text-danger-fg bg-danger-soft',
   neutral: 'text-muted bg-canvas',
 } as const
 

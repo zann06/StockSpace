@@ -36,7 +36,7 @@ export function LowStockCard({ items }: { items: DashboardLowStockItem[] }) {
                   <div className="flex min-w-0 items-center gap-2">
                     <AlertTriangle
                       aria-hidden
-                      className={`h-3.5 w-3.5 shrink-0 ${critical ? 'text-danger' : 'text-warning'}`}
+                      className={`h-3.5 w-3.5 shrink-0 ${critical ? 'text-danger-fg' : 'text-warning-fg'}`}
                     />
                     <Link
                       to={`/inventory/products/${item.id}`}
@@ -47,7 +47,7 @@ export function LowStockCard({ items }: { items: DashboardLowStockItem[] }) {
                     </Link>
                   </div>
                   <span
-                    className={`shrink-0 text-xs font-bold ${critical ? 'text-danger' : 'text-warning'}`}
+                    className={`shrink-0 text-xs font-bold ${critical ? 'text-danger-fg' : 'text-warning-fg'}`}
                   >
                     {formatNumber(item.quantity)}/{formatNumber(item.reorderThreshold)}
                   </span>

@@ -202,8 +202,8 @@ describe('authentication (web)', () => {
     render(<App />)
     expect(await screen.findByText('Total Stok')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Menu pengguna' }))
-    const menu = screen.getByRole('button', { name: 'Menu pengguna' }).parentElement!
+    await user.click(screen.getByRole('button', { name: /buka menu pengguna/ }))
+    const menu = screen.getByRole('button', { name: /buka menu pengguna/ }).parentElement!
     const logout = within(menu).getByRole('button', { name: 'Keluar' })
     await user.click(logout)
 

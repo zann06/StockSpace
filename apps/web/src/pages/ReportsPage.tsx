@@ -91,7 +91,7 @@ export function ReportsPage() {
       {exportError ? (
         <p
           role="alert"
-          className="rounded-control bg-danger-soft px-4 py-3 text-xs font-semibold text-danger"
+          className="rounded-control bg-danger-soft px-4 py-3 text-xs font-semibold text-danger-fg"
         >
           {exportError}
         </p>
@@ -148,7 +148,7 @@ export function ReportsPage() {
                       <td className="px-5 py-2.5 text-right text-sm font-bold text-ink">
                         {formatNumber(item.quantity)}/{formatNumber(item.reorderThreshold)}
                       </td>
-                      <td className="px-5 py-2.5 text-right text-sm font-extrabold text-danger">
+                      <td className="px-5 py-2.5 text-right text-sm font-extrabold text-danger-fg">
                         {formatNumber(item.shortfall)}
                       </td>
                       <td className="px-5 py-2.5 text-right text-xs text-muted">
@@ -305,11 +305,11 @@ export function ReportsPage() {
                       <td
                         className={`px-5 py-2.5 text-right text-sm font-extrabold ${
                           movement.type === 'IN'
-                            ? 'text-success'
+                            ? 'text-success-fg'
                             : movement.type === 'OUT'
-                              ? 'text-danger'
+                              ? 'text-danger-fg'
                               : movement.type === 'ADJUSTMENT'
-                                ? 'text-warning'
+                                ? 'text-warning-fg'
                                 : 'text-primary'
                         }`}
                       >
@@ -337,7 +337,7 @@ export function ReportsPage() {
             <FileBarChart aria-hidden className="h-6 w-6 text-primary" />
           </span>
           <p className="mt-2 flex items-center gap-1.5 text-sm font-bold text-ink">
-            <AlertTriangle aria-hidden className="h-4 w-4 text-warning" />
+            <AlertTriangle aria-hidden className="h-4 w-4 text-warning-fg" />
             Nilai stok = Σ(kuantitas × harga pokok) — perhitungan didokumentasikan di
             docs/database.md
           </p>

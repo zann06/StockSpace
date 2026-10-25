@@ -133,7 +133,7 @@ export function ProductDetailPage() {
         <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-card bg-canvas px-4 py-3">
             <dt className="text-[11px] font-semibold text-muted">Total Stok</dt>
-            <dd className={`mt-0.5 text-lg font-extrabold ${low ? 'text-danger' : 'text-ink'}`}>
+            <dd className={`mt-0.5 text-lg font-extrabold ${low ? 'text-danger-fg' : 'text-ink'}`}>
               {formatNumber(quantity)}{' '}
               <span className="text-xs font-semibold text-muted">{product.unit}</span>
             </dd>
