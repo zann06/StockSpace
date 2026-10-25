@@ -86,7 +86,7 @@ function resetDemoState(options: { signedIn?: boolean } = {}) {
   }
 }
 
-resetDemoState({ signedIn: true })
+resetDemoState({ signedIn: false })
 
 export function isDemoMode(): boolean {
   return import.meta.env.VITE_DEMO_MODE === 'true'

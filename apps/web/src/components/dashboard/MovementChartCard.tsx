@@ -51,13 +51,17 @@ function ChartTooltip({
 export function MovementChartCard({ series }: { series: DashboardSummary['movementSeries'] }) {
   const { t } = useI18n()
   const now = new Date()
-  const data = series.map((point) => {
+  const data = series.flatMap((point) => {
+    if (!point?.date) return []
     const date = new Date(`${point.date}T00:00:00`)
-    return {
-      label: isSameDay(date, now) ? t('Hari ini') : formatWeekday(date),
-      masuk: point.masuk,
-      keluar: point.keluar,
-    }
+    if (Number.isNaN(date.getTime())) return []
+    return [
+      {
+        label: isSameDay(date, now) ? t('Hari ini') : formatWeekday(date),
+        masuk: point.masuk,
+        keluar: point.keluar,
+      },
+    ]
   })
 
   return (
