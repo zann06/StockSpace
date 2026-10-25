@@ -32,6 +32,11 @@ export class AppErrorBoundary extends Component<Props, State> {
           <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
             {this.state.error.message || 'Terjadi kesalahan internal pada aplikasi.'}
           </p>
+          {this.state.error.stack ? (
+            <pre className="mt-3 max-h-40 max-w-xl overflow-auto scroll-slim rounded-control bg-canvas px-3 py-2 text-left text-[11px] leading-relaxed text-muted">
+              {this.state.error.stack.slice(0, 600)}
+            </pre>
+          ) : null}
           <button
             type="button"
             onClick={() => window.location.reload()}

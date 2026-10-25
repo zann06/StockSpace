@@ -8,12 +8,12 @@ test('live demo login works', async ({ page }) => {
   await page.getByLabel('Password').fill('stockspace-demo')
   await page.getByRole('button', { name: 'Masuk' }).click()
 
-
   await expect(page.getByRole('heading', { name: /Toko TechNusa/ })).toBeVisible({ timeout: 20000 })
   await expect(page.getByText('Total Stok')).toBeVisible()
 
   // record a movement to prove the demo is stateful
-  await page.goto('https://zann06.github.io/StockSpace/#/transactions/stock-in')
+  await page.getByRole('link', { name: 'Transaksi' }).click()
+  await page.getByRole('tab', { name: 'Barang Masuk' }).click()
   const productSelect = page.getByRole('combobox', { name: /Produk/ })
   await productSelect.waitFor()
   const productValue = await productSelect
