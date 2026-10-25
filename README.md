@@ -168,6 +168,14 @@ Security reports follow [SECURITY.md](SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) © StockSpace contributors. Third-party assets: icons by
-[lucide](https://lucide.dev) (ISC), font _Plus Jakarta Sans_ (SIL OFL 1.1 via
-Fontsource). All 3D geometry is procedural/original.
+[MIT](LICENSE) © StockSpace contributors. Third-party assets and tools:
+
+| Component | License | Notes |
+| --- | --- | --- |
+| [lucide](https://lucide.dev) icons | ISC | bundled in the app |
+| _Plus Jakarta Sans_ font (Fontsource) | SIL OFL 1.1 | bundled; OFL permits redistribution with attribution |
+| ffmpeg-static | GPL-3.0-or-later | **dev-only tool** used to render the demo GIF — never shipped in the application or its builds |
+| @axe-core/playwright | MPL-2.0 | dev-only (accessibility scans in tests) |
+
+All 3D geometry is procedural/original, and `design-reference.png` ships with
+this repository as the project brief's visual reference.
