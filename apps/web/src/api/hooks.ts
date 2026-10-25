@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { env } from '@/lib/env'
 
 import { apiFetch } from './client'
+import { demoFetch, isDemoMode } from './demo-api'
 import { useWorkspace } from './workspace-context'
 import type {
   ApiCategory,
@@ -324,9 +325,11 @@ export async function downloadReportCsv(
   if (params.type) query.set('type', params.type)
   if (params.productId) query.set('productId', params.productId)
 
-  const response = await fetch(`${env.VITE_API_URL}/api/reports/export.csv?${query}`, {
-    credentials: 'include',
-  })
+  const response = isDemoMode()
+    ? await demoFetch(`/api/reports/export.csv?${query}`)
+    : await fetch(`${env.VITE_API_URL}/api/reports/export.csv?${query}`, {
+        credentials: 'include',
+      })
   if (!response.ok) {
     let message = `Ekspor gagal (${response.status}).`
     try {

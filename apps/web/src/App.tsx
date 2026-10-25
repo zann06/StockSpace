@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import {
+  BrowserRouter,
+  HashRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 
 import { useSession } from '@/api/auth'
 import { I18nProvider } from '@/i18n'
@@ -73,10 +81,12 @@ function GuestOnly({ children }: { children: ReactNode }) {
 
 export default function App() {
   const [queryClient] = useState(createQueryClient)
+  // GitHub Pages cannot rewrite SPA paths — the static demo uses hash routing.
+  const Router = import.meta.env.VITE_DEMO_MODE === 'true' ? HashRouter : BrowserRouter
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <BrowserRouter>
+        <Router>
           <ScrollToTop />
           <Routes>
             <Route
@@ -117,7 +127,7 @@ export default function App() {
               </Route>
             </Route>
           </Routes>
-        </BrowserRouter>
+        </Router>
       </I18nProvider>
     </QueryClientProvider>
   )

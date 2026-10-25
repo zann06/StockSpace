@@ -1,5 +1,7 @@
 import { env } from '@/lib/env'
 
+import { demoFetch, isDemoMode } from './demo-api'
+
 /** Error thrown for non-2xx API responses; `message` is user-displayable. */
 export class ApiError extends Error {
   readonly status: number
@@ -30,6 +32,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   if (options.workspaceId !== null) {
     const workspaceId = options.workspaceId ?? currentWorkspaceId
     if (workspaceId) headers['x-workspace-id'] = workspaceId
+  }
+
+  if (isDemoMode()) {
+    return (await demoFetch(path, options)) as T
   }
 
   let response: Response

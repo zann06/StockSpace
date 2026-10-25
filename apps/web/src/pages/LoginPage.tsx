@@ -94,7 +94,7 @@ export function LoginPage() {
           </button>
         </form>
 
-        {import.meta.env.DEV ? (
+        {import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === 'true' ? (
           <div className="mt-4 rounded-card border border-dashed border-line bg-surface px-4 py-3 text-xs leading-relaxed text-muted">
             <p className="font-bold text-ink">{t('Akun demo (development only)')}</p>
             <p className="mt-1">
@@ -109,9 +109,13 @@ export function LoginPage() {
           </div>
         ) : null}
 
-        <p className="mt-4 text-center text-[11px] text-muted">
-          {lang === 'en' ? 'Language follows your profile menu.' : null}
-        </p>
+        {import.meta.env.VITE_DEMO_MODE === 'true' ? (
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted">
+            {lang === 'en'
+              ? 'Static demo on GitHub Pages — sample data only, resets on refresh.'
+              : 'Demo statis di GitHub Pages — data contoh, diatur ulang saat halaman dimuat ulang.'}
+          </p>
+        ) : null}
       </div>
     </div>
   )
