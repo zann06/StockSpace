@@ -392,8 +392,8 @@ export async function demoFetch(
     return jsonResponse({
       data: [
         {
-          ...warehouse,
           id: 'ws-1',
+          name: 'Toko TechNusa',
           currency: 'IDR',
           timezone: 'Asia/Jakarta',
           role: state.session.role,

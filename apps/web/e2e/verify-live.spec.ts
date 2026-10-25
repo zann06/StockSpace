@@ -3,18 +3,17 @@ import { expect, test } from '@playwright/test'
 /** One-off verification of the live GitHub Pages demo (login → dashboard). */
 test('live demo login works', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('stockspace.tourDone', '1'))
-  page.on('pageerror', (error) => console.log('PAGEERROR STACK:', error.stack?.slice(0, 800)))
-  await page.goto('http://127.0.0.1:4177/StockSpace/', { waitUntil: 'networkidle' })
-  await page.waitForTimeout(2000)
-  console.log('BODY:', JSON.stringify((await page.locator('body').innerText()).slice(0, 150)))
+  await page.goto('https://zann06.github.io/StockSpace/', { waitUntil: 'networkidle' })
   await page.getByLabel('Email').fill('dewi@technusa.example')
   await page.getByLabel('Password').fill('stockspace-demo')
   await page.getByRole('button', { name: 'Masuk' }).click()
+
+
   await expect(page.getByRole('heading', { name: /Toko TechNusa/ })).toBeVisible({ timeout: 20000 })
   await expect(page.getByText('Total Stok')).toBeVisible()
 
   // record a movement to prove the demo is stateful
-  await page.goto('http://127.0.0.1:4177/StockSpace/#/transactions/stock-in')
+  await page.goto('https://zann06.github.io/StockSpace/#/transactions/stock-in')
   const productSelect = page.getByRole('combobox', { name: /Produk/ })
   await productSelect.waitFor()
   const productValue = await productSelect
