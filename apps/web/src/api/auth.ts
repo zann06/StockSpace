@@ -28,7 +28,14 @@ export function useSession() {
   })
 }
 
-/** Email/password sign-in via better-auth. */
+/**
+ * Email/password sign-in via better-auth.
+ *
+ * Seeds the session cache optimistically from the response: redirect guards
+ * (`RequireAuth`/`GuestOnly`) read the cache synchronously, so invalidating
+ * instead would briefly report "signed out" and bounce the user back to
+ * /login before the refetch completes.
+ */
 export function useSignIn() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -38,8 +45,16 @@ export function useSignIn() {
         body: input,
         workspaceId: null,
       }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries()
+    onSuccess: (result) => {
+      queryClient.setQueryData(['session'], {
+        session: {
+          id: 'optimistic',
+          expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+          userId: result.user.id,
+        },
+        user: result.user,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['workspaces'] })
     },
   })
 }

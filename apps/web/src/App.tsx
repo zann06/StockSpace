@@ -60,6 +60,14 @@ function RequireAuth() {
   const sessionQuery = useSession()
   const location = useLocation()
 
+  if (import.meta.env.VITE_DEMO_MODE === 'true') {
+    console.log('[guard] RequireAuth', {
+      isLoading: sessionQuery.isLoading,
+      error: sessionQuery.error?.message,
+      hasUser: !!sessionQuery.data?.user,
+    })
+  }
+
   if (sessionQuery.isLoading) return <FullPageLoading />
   if (sessionQuery.error || !sessionQuery.data?.user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
