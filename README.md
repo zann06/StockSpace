@@ -8,7 +8,12 @@ racks in a real 3D scene driven by your saved warehouse layout. Available in
 **Bahasa Indonesia and English**.
 
 [![CI](https://github.com/zann06/StockSpace/actions/workflows/ci.yml/badge.svg)](https://github.com/zann06/StockSpace/actions)
+[![Live demo](https://img.shields.io/badge/live%20demo-zann06.github.io%2FStockSpace-6546F5)](https://zann06.github.io/StockSpace/)
 [License: MIT](LICENSE)
+
+**Try it now — no install:** [interactive live demo](https://zann06.github.io/StockSpace/)
+(static build on GitHub Pages: sign in with the demo accounts below, record
+movements, watch the 3D delivery animation — sample data, resets on refresh).
 
 ## Demo
 
@@ -108,7 +113,9 @@ production (roles are enforced server-side on every request).
 docker compose up --build   # web on :8080, API on :4000, PostgreSQL on :5433
 ```
 
-The API applies migrations on boot (`prisma migrate deploy`). For production,
+The API applies migrations on boot (`prisma migrate deploy`). The Pages demo
+serves an in-memory sample dataset instead (see `.github/workflows/deploy-pages.yml`).
+For production,
 set a real `BETTER_AUTH_SECRET` — see the
 [VPS deployment guide](docs/deployment-vps.md).
 
