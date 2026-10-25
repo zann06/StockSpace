@@ -38,7 +38,7 @@ docker compose version
 ```bash
 sudo mkdir -p /opt/stockspace && sudo chown "$USER" /opt/stockspace
 cd /opt/stockspace
-git clone https://github.com/<your-fork>/stockspace.git .
+git clone https://github.com/zann06/StockSpace.git .
 
 cp .env.example .env
 # REQUIRED secrets — generate real values:

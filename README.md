@@ -7,7 +7,7 @@ products are stored — receive, move, adjust, and issue stock, and explore your
 racks in a real 3D scene driven by your saved warehouse layout. Available in
 **Bahasa Indonesia and English**.
 
-[![CI](https://github.com/your-fork/stockspace/actions/workflows/ci.yml/badge.svg)](../../actions)
+[![CI](https://github.com/zann06/StockSpace/actions/workflows/ci.yml/badge.svg)](https://github.com/zann06/StockSpace/actions)
 [License: MIT](LICENSE)
 
 ## Demo
@@ -78,7 +78,7 @@ Requirements: **Node.js ≥ 20.19** (`.nvmrc` pins 22), npm, and Docker (for
 PostgreSQL).
 
 ```bash
-git clone https://github.com/<your-fork>/stockspace.git
+git clone https://github.com/zann06/StockSpace.git
 cd stockspace
 npm install            # installs all workspaces + generates the Prisma client
 cp .env.example .env   # then adjust if needed

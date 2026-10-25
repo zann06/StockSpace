@@ -9,9 +9,10 @@ to the latest `main` branch only.
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-Email the maintainers at **security@stockspace.example** (replace with the
-address published on the repository's GitHub Security tab when the project goes
-public). Include:
+Use **GitHub's private vulnerability reporting**: open
+<https://github.com/zann06/StockSpace/security/advisories/new> and file a
+private report (preferred), or email the maintainer listed on the repository's
+Security tab. Include:
 
 - a description of the issue and its impact,
 - steps or a proof-of-concept to reproduce it,
