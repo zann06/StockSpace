@@ -6,16 +6,20 @@ test('debug demo login', async ({ page }) => {
     if (frame === page.mainFrame()) console.log('NAVIGATED TO:', frame.url())
   })
   page.on('request', (req) => {
-    if (!req.url().includes('.woff'))
-      console.log('REQ:', req.method(), req.url().slice(0, 140))
+    if (!req.url().includes('.woff')) console.log('REQ:', req.method(), req.url().slice(0, 140))
   })
   page.on('download', (dl) => console.log('DOWNLOAD:', dl.url()))
   page.on('response', (res) => {
     if (res.status() >= 400) {
       console.log('HTTP', res.status(), res.url().slice(0, 160))
       const headers = res.headers()
-      Object.entries(headers).forEach(([k, v]) => console.log('  HDR', k + ':', String(v).slice(0, 90)))
-      res.text().then((t) => console.log('404 BODY:', t.slice(0, 200))).catch(() => {})
+      Object.entries(headers).forEach(([k, v]) =>
+        console.log('  HDR', k + ':', String(v).slice(0, 90))
+      )
+      res
+        .text()
+        .then((t) => console.log('404 BODY:', t.slice(0, 200)))
+        .catch(() => {})
     }
   })
   page.on('pageerror', (error) => {
@@ -49,7 +53,15 @@ test('debug demo login', async ({ page }) => {
   await btn.click()
   console.log('btn disabled right after click:', await btn.isDisabled().catch(() => 'n/a'))
   await page.waitForTimeout(500)
-  console.log('alert @500ms:', JSON.stringify(await page.locator('[role=alert]').textContent().catch(() => null)))
+  console.log(
+    'alert @500ms:',
+    JSON.stringify(
+      await page
+        .locator('[role=alert]')
+        .textContent()
+        .catch(() => null)
+    )
+  )
   console.log('url @500ms:', page.url())
   await page.waitForTimeout(2500)
   console.log('URL after submit:', page.url())
