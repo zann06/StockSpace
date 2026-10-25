@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { useDismiss } from '@/lib/hooks'
+import { useI18n } from '@/i18n'
 
 interface NavItem {
   to: string
@@ -28,11 +29,12 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 function SidebarLogo() {
+  const { t } = useI18n()
   return (
     <Link
       to="/dashboard"
       className="flex items-center gap-2.5 px-2 py-1"
-      aria-label="StockSpace — ke Dashboard"
+      aria-label={t('StockSpace — ke Dashboard')}
     >
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-sm">
         <Boxes aria-hidden className="h-5 w-5 text-white" />
@@ -43,8 +45,9 @@ function SidebarLogo() {
 }
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useI18n()
   return (
-    <nav aria-label="Navigasi utama" className="flex flex-col gap-1">
+    <nav aria-label={t('Navigasi utama')} className="flex flex-col gap-1">
       {NAV_ITEMS.map((item) => (
         <NavLink
           key={item.to}
@@ -59,7 +62,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           }
         >
           <item.icon aria-hidden className="h-[18px] w-[18px]" />
-          {item.label}
+          {t(item.label)}
         </NavLink>
       ))}
     </nav>
@@ -68,11 +71,12 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
 /** Original inline illustration — three isometric cubes, no external assets. */
 function PromoIllustration() {
+  const { t } = useI18n()
   return (
     <svg
       viewBox="0 0 120 76"
       role="img"
-      aria-label="Ilustrasi kubus isometrik"
+      aria-label={t('Ilustrasi kubus isometrik')}
       className="h-auto w-full"
     >
       <g>
@@ -91,20 +95,23 @@ function PromoIllustration() {
 }
 
 function SidebarPromo() {
+  const { t } = useI18n()
   return (
     <div className="rounded-card bg-primary-soft p-4">
       <PromoIllustration />
-      <p className="mt-2 text-sm font-bold text-ink">Smarter Inventory, Better Business</p>
+      <p className="mt-2 text-sm font-bold text-ink">{t('Smarter Inventory, Better Business')}</p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        Kelola stok, lokasi, dan laporan gudang Anda dalam satu tempat.
+        {t('Kelola stok, lokasi, dan laporan gudang Anda dalam satu tempat.')}
       </p>
       <button
         type="button"
         disabled
-        title="Fitur opsional — StockSpace adalah MVP open-source dan belum memiliki paket berbayar."
+        title={t(
+          'Fitur opsional — StockSpace adalah MVP open-source dan belum memiliki paket berbayar.'
+        )}
         className="mt-3 w-full rounded-control bg-primary/50 px-3 py-2 text-xs font-bold text-white cursor-not-allowed"
       >
-        Upgrade Pro
+        {t('Upgrade Pro')}
       </button>
     </div>
   )
@@ -139,6 +146,7 @@ interface SidebarMobileProps {
 
 /** Mobile off-canvas navigation with overlay, Escape-to-close, and autofocus. */
 export function SidebarMobile({ open, onClose }: SidebarMobileProps) {
+  const { t } = useI18n()
   const panelRef = useRef<HTMLDivElement>(null)
   useDismiss(panelRef, onClose, open)
 
@@ -154,7 +162,7 @@ export function SidebarMobile({ open, onClose }: SidebarMobileProps) {
       className="fixed inset-0 z-50 lg:hidden"
       role="dialog"
       aria-modal="true"
-      aria-label="Menu navigasi"
+      aria-label={t('Menu navigasi')}
     >
       <div className="absolute inset-0 bg-ink/30" onClick={onClose} aria-hidden />
       <div
@@ -165,7 +173,7 @@ export function SidebarMobile({ open, onClose }: SidebarMobileProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup menu"
+            aria-label={t('Tutup menu')}
             className="flex h-9 w-9 items-center justify-center rounded-control text-muted hover:bg-canvas hover:text-ink"
           >
             <X aria-hidden className="h-5 w-5" />

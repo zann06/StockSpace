@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Grid, Html, OrbitControls, RoundedBox } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Mesh } from 'three'
+import type { Mesh, MeshStandardMaterial } from 'three'
 import type {
   Balance,
   LevelFilter,
@@ -13,6 +13,7 @@ import type {
   ZoomCommand,
 } from '@/types'
 import { formatNumber } from '@/lib/format'
+import { onMovement, type MovementEvent } from '@/lib/events'
 
 /**
  * Procedural 3D warehouse — racks, shelves, boxes, staging/packing areas, and
@@ -427,6 +428,82 @@ function Forklift() {
   )
 }
 
+interface Delivery {
+  nonce: number
+  event: MovementEvent
+}
+
+/**
+ * Animated "delivery" when a stock movement is committed: a cargo box flies
+ * from the source (or the staging area for stock-ins) to the destination
+ * location along a smooth arc, then fades out — masked by the query refresh.
+ * The parent mounts one keyed instance per event; `onDone` unmounts it.
+ * Skipped entirely under prefers-reduced-motion.
+ */
+function DeliveryFlyer({
+  delivery,
+  locations,
+  reducedMotion,
+  onDone,
+}: {
+  delivery: Delivery
+  locations: StorageLocation[]
+  reducedMotion: boolean
+  onDone: () => void
+}) {
+  const ref = useRef<Mesh>(null)
+  const begun = useRef(0)
+
+  const route = useMemo(() => {
+    const event = delivery.event
+    const destination =
+      locations.find((location) => location.id === event.destinationLocationId) ??
+      locations.find((location) => location.id === event.sourceLocationId)
+    const source =
+      locations.find((location) => location.id === event.sourceLocationId) ??
+      locations.find((location) => location.type === 'STAGING') ??
+      locations[0]
+    if (!destination || !source) return null
+    return {
+      start: [source.x, 1.2, source.z] as [number, number, number],
+      end: [destination.x, 1.2, destination.z] as [number, number, number],
+    }
+  }, [delivery, locations])
+
+  useEffect(() => {
+    if (!route || reducedMotion) return
+    const timer = window.setTimeout(onDone, 1900)
+    return () => window.clearTimeout(timer)
+  }, [route, reducedMotion, onDone])
+
+  useFrame((state) => {
+    if (!ref.current || !route) return
+    if (!begun.current) begun.current = state.clock.elapsedTime
+    const progress = Math.min(1, (state.clock.elapsedTime - begun.current) / 1.5)
+    const eased = progress * progress * (3 - 2 * progress)
+    const [sx, sy, sz] = route.start
+    const [ex, ey, ez] = route.end
+    ref.current.position.set(
+      sx + (ex - sx) * eased,
+      sy + (ey - sy) * eased + Math.sin(Math.PI * eased) * 1.6,
+      sz + (ez - sz) * eased
+    )
+    ref.current.rotation.y = eased * Math.PI * 2
+    const material = ref.current.material as MeshStandardMaterial
+    material.opacity = progress > 0.8 ? 1 - (progress - 0.8) / 0.2 : 1
+  })
+
+  if (!route || reducedMotion) return null
+  void delivery
+
+  return (
+    <mesh ref={ref} position={route.start} castShadow>
+      <boxGeometry args={[0.42, 0.36, 0.42]} />
+      <meshStandardMaterial color="#d9b98e" roughness={0.9} transparent opacity={1} />
+    </mesh>
+  )
+}
+
 function SceneContents({
   locations,
   balances,
@@ -438,6 +515,9 @@ function SceneContents({
   reducedMotion,
 }: Omit<WarehouseSceneProps, 'zoomCommand' | 'resetNonce' | 'onReady'>) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [delivery, setDelivery] = useState<Delivery | null>(null)
+
+  useEffect(() => onMovement((event) => setDelivery({ nonce: Date.now(), event })), [])
 
   useEffect(() => {
     document.body.style.cursor = hoveredId ? 'pointer' : 'auto'
@@ -540,6 +620,15 @@ function SceneContents({
       )}
 
       <Forklift />
+      {delivery ? (
+        <DeliveryFlyer
+          key={delivery.nonce}
+          delivery={delivery}
+          locations={locations}
+          reducedMotion={reducedMotion}
+          onDone={() => setDelivery(null)}
+        />
+      ) : null}
 
       <OrbitControls
         makeDefault

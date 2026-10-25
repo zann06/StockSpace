@@ -11,6 +11,7 @@ import {
 import type { DashboardSummary } from '@/api/types'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatWeekday, isSameDay } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 interface TooltipPayloadItem {
   dataKey?: string | number
@@ -26,6 +27,7 @@ function ChartTooltip({
   payload?: TooltipPayloadItem[]
   label?: string | number
 }) {
+  const { t } = useI18n()
   if (!active || !payload || payload.length === 0) return null
   return (
     <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-md">
@@ -37,7 +39,7 @@ function ChartTooltip({
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: item.dataKey === 'masuk' ? '#6546f5' : '#f0445e' }}
           />
-          {item.dataKey === 'masuk' ? 'Masuk' : 'Keluar'}:{' '}
+          {item.dataKey === 'masuk' ? t('Masuk') : t('Keluar')}:{' '}
           <span className="font-bold text-ink">{item.value}</span>
         </p>
       ))}
@@ -47,11 +49,12 @@ function ChartTooltip({
 
 /** Stock movement trend — in/out counts per day over the last 7 days. */
 export function MovementChartCard({ series }: { series: DashboardSummary['movementSeries'] }) {
+  const { t } = useI18n()
   const now = new Date()
   const data = series.map((point) => {
     const date = new Date(`${point.date}T00:00:00`)
     return {
-      label: isSameDay(date, now) ? 'Hari ini' : formatWeekday(date),
+      label: isSameDay(date, now) ? t('Hari ini') : formatWeekday(date),
       masuk: point.masuk,
       keluar: point.keluar,
     }
@@ -60,15 +63,15 @@ export function MovementChartCard({ series }: { series: DashboardSummary['moveme
   return (
     <Card className="flex flex-col">
       <CardHeader
-        title="Pergerakan Stok"
-        subtitle="7 hari terakhir"
+        title={t('Pergerakan Stok')}
+        subtitle={t('7 hari terakhir')}
         action={
           <div className="flex items-center gap-3 text-[11px] font-semibold text-muted">
             <span className="flex items-center gap-1.5">
-              <span aria-hidden className="h-2 w-2 rounded-full bg-primary" /> Masuk
+              <span aria-hidden className="h-2 w-2 rounded-full bg-primary" /> {t('Masuk')}
             </span>
             <span className="flex items-center gap-1.5">
-              <span aria-hidden className="h-2 w-2 rounded-full bg-danger" /> Keluar
+              <span aria-hidden className="h-2 w-2 rounded-full bg-danger" /> {t('Keluar')}
             </span>
           </div>
         }

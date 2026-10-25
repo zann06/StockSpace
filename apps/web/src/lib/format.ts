@@ -1,7 +1,21 @@
-/** Indonesian-locale formatters. All UI text is id-ID per the design reference. */
+/**
+ * Locale-aware formatters (id-ID default per the design reference). The active
+ * locale is set by the I18nProvider; "Hari ini/Kemarin" adjust to English when
+ * the app language is English.
+ */
+
+let activeLocale: 'id-ID' | 'en-US' = 'id-ID'
+
+export function setActiveLocale(locale: 'id-ID' | 'en-US') {
+  activeLocale = locale
+}
 
 const numberFormat = new Intl.NumberFormat('id-ID')
-const compactCurrencyFormat = new Intl.NumberFormat('id-ID', {
+const compactCurrencyId = new Intl.NumberFormat('id-ID', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+const compactCurrencyEn = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 1,
 })
@@ -9,7 +23,12 @@ const dayMonthFormat = new Intl.DateTimeFormat('id-ID', {
   day: 'numeric',
   month: 'short',
 })
+const dayMonthFormatEn = new Intl.DateTimeFormat('en-US', {
+  day: 'numeric',
+  month: 'short',
+})
 const weekdayFormat = new Intl.DateTimeFormat('id-ID', { weekday: 'short' })
+const weekdayFormatEn = new Intl.DateTimeFormat('en-US', { weekday: 'short' })
 
 export function formatNumber(value: number): string {
   return numberFormat.format(value)
@@ -20,9 +39,10 @@ export function formatCurrency(value: number): string {
   return `Rp ${numberFormat.format(Math.round(value))}`
 }
 
-/** "Rp 190,5 jt" — compact form for KPI cards; `title` should carry the full value. */
+/** "Rp 190,5 jt" / "Rp 190.5M" — compact KPI form; `title` carries the full value. */
 export function formatCompactCurrency(value: number): string {
-  return `Rp ${compactCurrencyFormat.format(value)}`
+  const compact = activeLocale === 'en-US' ? compactCurrencyEn : compactCurrencyId
+  return `Rp ${compact.format(value)}`
 }
 
 function pad2(n: number): string {
@@ -48,16 +68,17 @@ function isYesterday(date: Date, now: Date): boolean {
   return isSameDay(date, prev)
 }
 
-/** "Hari ini 10:24", "Kemarin 15:45", or "12 Apr 09:12". */
+/** "Hari ini 10:24" / "Today 10:24", "Kemarin", or "12 Apr 09:12". */
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const date = new Date(iso)
   const time = formatTime(date)
-  if (isSameDay(date, now)) return `Hari ini ${time}`
-  if (isYesterday(date, now)) return `Kemarin ${time}`
-  return `${dayMonthFormat.format(date)} ${time}`
+  const english = activeLocale === 'en-US'
+  if (isSameDay(date, now)) return `${english ? 'Today' : 'Hari ini'} ${time}`
+  if (isYesterday(date, now)) return `${english ? 'Yesterday' : 'Kemarin'} ${time}`
+  return `${(english ? dayMonthFormatEn : dayMonthFormat).format(date)} ${time}`
 }
 
-/** "Sen", "Sel", … for chart axis labels. */
+/** "Sen"/"Mon", … for chart axis labels. */
 export function formatWeekday(date: Date): string {
-  return weekdayFormat.format(date)
+  return (activeLocale === 'en-US' ? weekdayFormatEn : weekdayFormat).format(date)
 }

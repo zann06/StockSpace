@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/App'
+import { I18nProvider } from '@/i18n'
 import { LocationList } from '@/components/warehouse/LocationList'
 import { balances, locations, products } from '@/mocks/warehouse-data'
 import { isWebGLAvailable } from '@/lib/webgl'
@@ -19,13 +20,15 @@ afterEach(() => {
 describe('LocationList (accessibility fallback)', () => {
   it('renders every location with its status and quantity', () => {
     render(
-      <LocationList
-        locations={locations}
-        balances={balances}
-        products={products}
-        selectedLocationId={null}
-        onSelect={() => {}}
-      />
+      <I18nProvider>
+        <LocationList
+          locations={locations}
+          balances={balances}
+          products={products}
+          selectedLocationId={null}
+          onSelect={() => {}}
+        />
+      </I18nProvider>
     )
     for (const location of locations) {
       expect(screen.getByRole('button', { name: new RegExp(location.label) })).toBeInTheDocument()
@@ -38,15 +41,17 @@ describe('LocationList (accessibility fallback)', () => {
     const user = userEvent.setup()
     let selected: string | null = null
     render(
-      <LocationList
-        locations={locations}
-        balances={balances}
-        products={products}
-        selectedLocationId={selected}
-        onSelect={(id) => {
-          selected = id
-        }}
-      />
+      <I18nProvider>
+        <LocationList
+          locations={locations}
+          balances={balances}
+          products={products}
+          selectedLocationId={selected}
+          onSelect={(id) => {
+            selected = id
+          }}
+        />
+      </I18nProvider>
     )
     await user.click(screen.getByRole('button', { name: /Rak A1/ }))
     expect(selected).toBe(locations[0].id)
@@ -209,5 +214,22 @@ describe('authentication (web)', () => {
 
     // Session cleared → back to the login page.
     expect(await screen.findByText('Masuk untuk mengelola inventaris Anda')).toBeInTheDocument()
+  })
+})
+
+describe('i18n (ID/EN)', () => {
+  it('switches the dashboard to English via the header switch', async () => {
+    const user = userEvent.setup()
+    window.history.pushState({}, '', '/dashboard')
+    render(<App />)
+    expect(await screen.findByText('Total Stok')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'EN' }))
+    expect(await screen.findByText('Total Stock')).toBeInTheDocument()
+    expect(screen.getByText("Today's Transactions")).toBeInTheDocument()
+
+    // restore Indonesian for subsequent tests (localStorage persists per file)
+    await user.click(screen.getByRole('button', { name: 'ID' }))
+    expect(await screen.findByText('Total Stok')).toBeInTheDocument()
   })
 })

@@ -151,6 +151,29 @@ a readable error instead of producing a half-configured app.
 **Why.** Phase 0 requires environment validation; misconfiguration should be
 loud and early.
 
+### D10 — Bilingual UI, onboarding tour, and the delivery animation (post-MVP polish)
+
+**Decision.**
+- **i18n**: a zero-dependency gettext-style provider (`apps/web/src/i18n`).
+  Catalog keys are the Indonesian source strings; `t('Total Stok')` returns
+  Indonesian as-is and the English translation when the language is `en` —
+  untranslated keys gracefully fall back to Indonesian. The active language
+  (persisted in `localStorage`, default `id`) also drives `Intl` number/date
+  formatting. Server messages stay Indonesian in this iteration.
+- **Onboarding tour**: `components/tour/AppTour.tsx` — a spotlight overlay that
+  walks real UI elements (anchored by `data-tour` attributes), runs once per
+  browser (`localStorage`), supports ←/Esc, respects the i18n catalog, and can
+  be replayed from Settings.
+- **Delivery animation**: `MovementForm` emits a movement event through a tiny
+  pub/sub (`lib/events.ts`) on success; the 3D scene subscribes and flies a
+  cargo box from the source (or the staging area for stock-ins) to the
+  destination rack along an arc, fading out as the refreshed data lands. Fully
+  skipped under `prefers-reduced-motion`.
+
+**Why.** The catalog-as-source-string approach makes the ~200-string migration
+mechanical and keeps missed translations harmless; the tour and animation are
+self-contained modules with no new runtime dependencies.
+
 ## Data flow (target state, Phase 3)
 
 ```text

@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
 import { Header } from '@/components/layout/Header'
+import { AppTour } from '@/components/tour/AppTour'
 import { Sidebar, SidebarMobile } from '@/components/layout/Sidebar'
+import { useI18n } from '@/i18n'
 
 /** Responsive application shell: fixed sidebar on desktop, off-canvas on mobile. */
 export function AppLayout() {
+  const { t } = useI18n()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
@@ -14,7 +17,7 @@ export function AppLayout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-control focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-white"
       >
-        Lompat ke konten utama
+        {t('Lompat ke konten utama')}
       </a>
       <Sidebar />
       <SidebarMobile open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
@@ -23,6 +26,7 @@ export function AppLayout() {
         <main id="main-content" className="mx-auto w-full max-w-[1600px] flex-1 p-4 md:p-6 lg:p-8">
           <Outlet />
         </main>
+        <AppTour />
       </div>
     </div>
   )

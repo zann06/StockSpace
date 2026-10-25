@@ -17,11 +17,13 @@ import { MovementChartCard } from '@/components/dashboard/MovementChartCard'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 type ReportType = 'ALL' | 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
 
 /** Reports — low-stock, movement history with filters, and CSV export. */
 export function ReportsPage() {
+  const { t } = useI18n()
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [type, setType] = useState<ReportType>('ALL')
@@ -60,7 +62,7 @@ export function ReportsPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Laporan"
+        title={t('Laporan')}
         subtitle="Analisis pergerakan stok, produk menipis, dan sebaran inventaris — dari data tersimpan."
         meta={<DemoBadge />}
         actions={
@@ -70,7 +72,7 @@ export function ReportsPage() {
               size="sm"
               onClick={() => void exportCsv('low-stock')}
               disabled={exporting !== null || lowStockQuery.isLoading}
-              title="Unduh laporan stok menipis sebagai CSV"
+              title={t('Unduh laporan stok menipis sebagai CSV')}
             >
               <Download aria-hidden className="h-3.5 w-3.5" />
               {exporting === 'low-stock' ? 'Menyiapkan…' : 'CSV Stok Menipis'}
@@ -100,7 +102,7 @@ export function ReportsPage() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card className="overflow-hidden">
           <CardHeader
-            title="Laporan Stok Menipis"
+            title={t('Laporan Stok Menipis')}
             subtitle={
               lowStockQuery.isLoading
                 ? 'Memuat…'
@@ -126,7 +128,7 @@ export function ReportsPage() {
                       Kekurangan
                     </th>
                     <th scope="col" className="px-5 py-2.5 text-right">
-                      Nilai Stok
+                      {t('Nilai Stok')}
                     </th>
                   </tr>
                 </thead>
@@ -159,7 +161,7 @@ export function ReportsPage() {
                   {!lowStockQuery.isLoading && (lowStockQuery.data?.data.length ?? 0) === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-5 py-6 text-center text-xs text-muted">
-                        Semua produk berada di atas ambang stok. 🎉
+                        {t('Semua produk berada di atas ambang stok.')}
                       </td>
                     </tr>
                   ) : null}
@@ -173,7 +175,7 @@ export function ReportsPage() {
 
         <Card className="overflow-hidden xl:col-span-2">
           <CardHeader
-            title="Laporan Pergerakan Stok"
+            title={t('Laporan Pergerakan Stok')}
             subtitle={`${formatNumber(movementsQuery.data?.pagination.total ?? 0)} transaksi cocok dengan filter`}
           />
           <div className="flex flex-wrap items-end gap-2.5 border-b border-line px-5 py-3">
@@ -187,7 +189,7 @@ export function ReportsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-bold text-ink">
-              Sampai
+              {t('Sampai')}
               <input
                 type="date"
                 value={to}
@@ -196,17 +198,17 @@ export function ReportsPage() {
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-bold text-ink">
-              Jenis
+              {t('Jenis')}
               <select
                 value={type}
                 onChange={(event) => setType(event.target.value as ReportType)}
                 className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               >
-                <option value="ALL">Semua</option>
-                <option value="IN">Masuk</option>
-                <option value="OUT">Keluar</option>
-                <option value="TRANSFER">Transfer</option>
-                <option value="ADJUSTMENT">Penyesuaian</option>
+                <option value="ALL">{t('Semua')}</option>
+                <option value="IN">{t('Masuk')}</option>
+                <option value="OUT">{t('Keluar')}</option>
+                <option value="TRANSFER">{t('Transfer')}</option>
+                <option value="ADJUSTMENT">{t('Penyesuaian')}</option>
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs font-bold text-ink">
@@ -216,7 +218,7 @@ export function ReportsPage() {
                 onChange={(event) => setProductId(event.target.value)}
                 className="h-9 max-w-52 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               >
-                <option value="">Semua produk</option>
+                <option value="">{t('Semua produk')}</option>
                 {(productsQuery.data?.data ?? []).map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
@@ -235,14 +237,14 @@ export function ReportsPage() {
                 }}
                 className="h-9 rounded-control px-3 text-xs font-bold text-primary hover:bg-primary-soft"
               >
-                Reset filter
+                {t('Reset filter')}
               </button>
             )}
           </div>
 
           {movementsQuery.isLoading ? (
             <p className="px-5 py-8 text-center text-sm font-semibold text-muted">
-              Memuat laporan…
+              {t('Memuat laporan…')}
             </p>
           ) : movementsQuery.error ? (
             <p className="px-5 py-8 text-center text-xs leading-relaxed text-muted">
@@ -250,7 +252,7 @@ export function ReportsPage() {
             </p>
           ) : movements.length === 0 ? (
             <p className="px-5 py-8 text-center text-xs text-muted">
-              Tidak ada transaksi yang cocok dengan filter.
+              {t('Tidak ada transaksi yang cocok dengan filter.')}
             </p>
           ) : (
             <div className="max-h-96 overflow-auto scroll-slim">
@@ -264,16 +266,16 @@ export function ReportsPage() {
                       Produk
                     </th>
                     <th scope="col" className="px-5 py-2.5">
-                      Jenis
+                      {t('Jenis')}
                     </th>
                     <th scope="col" className="px-5 py-2.5">
-                      Dari → Ke
+                      {t('Dari → Ke')}
                     </th>
                     <th scope="col" className="px-5 py-2.5 text-right">
                       Qty
                     </th>
                     <th scope="col" className="px-5 py-2.5">
-                      Aktor
+                      {t('Aktor')}
                     </th>
                   </tr>
                 </thead>

@@ -45,7 +45,9 @@ Node.js ≥ 20.19 is required (`.nvmrc` pins 22: `nvm use`).
 - **Styling**: Tailwind CSS v4 design tokens defined in `apps/web/src/index.css`
   (`bg-primary`, `text-ink`, `border-line`, …). Do not introduce one-off hex
   colors; extend the theme instead.
-- **UI text is Indonesian (id-ID)**; code, comments, and docs are English.
+- **UI text is bilingual** via the i18n catalog (`apps/web/src/i18n`): write the
+  Indonesian source string in the component wrapped in `t('…')` **and** add its
+  English entry to the `en` catalog. Code, comments, and docs are English.
 - **Accessibility is not optional**: labelled controls, keyboard paths for
   every interaction, visible focus states, colour never the only signal.
 - **Demo data stays in `apps/web/src/mocks/`** — production modules must never

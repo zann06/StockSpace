@@ -10,6 +10,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 const DEMO = { email: 'dewi@technusa.example', password: 'stockspace-demo' }
 
+// Screenshots suppress the onboarding tour via addInitScript in each test.
+
 /** Parses the "Total Stok" KPI value (Indonesian thousand separators). */
 async function totalUnitsFromDashboard(page: Page): Promise<number> {
   await expect(page.getByText('Total Stok')).toBeVisible()
@@ -23,6 +25,7 @@ async function totalUnitsFromDashboard(page: Page): Promise<number> {
 }
 
 test('login page rejects invalid credentials with a readable error', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('stockspace.tourDone', '1'))
   await page.goto('/login')
   await expect(page.getByLabel('Email')).toBeVisible()
   await page.screenshot({ path: '../../docs/screenshots/login.png', fullPage: true })
@@ -36,6 +39,7 @@ test('login page rejects invalid credentials with a readable error', async ({ pa
 test('smoke: login → dashboard (a11y scan) → warehouse → inventory → stock-in → updated dashboard → logout', async ({
   page,
 }) => {
+  await page.addInitScript(() => localStorage.setItem('stockspace.tourDone', '1'))
   // 1. Sign in as STAFF.
   await page.goto('/login')
   await page.getByLabel('Email').fill(DEMO.email)

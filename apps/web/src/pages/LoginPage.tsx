@@ -3,9 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Boxes, LogIn } from 'lucide-react'
 
 import { useSignIn } from '@/api/auth'
+import { useI18n } from '@/i18n'
 
 /** Email/password sign-in (better-auth). Demo credentials are shown in dev. */
 export function LoginPage() {
+  const { t, lang } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
   const signIn = useSignIn()
@@ -25,7 +27,7 @@ export function LoginPage() {
       setError(
         cause instanceof Error && cause.message
           ? cause.message
-          : 'Gagal masuk — periksa email dan password Anda.'
+          : t('Gagal masuk — periksa email dan password Anda.')
       )
     }
   }
@@ -39,7 +41,9 @@ export function LoginPage() {
           </span>
           <div className="text-center">
             <h1 className="text-xl font-extrabold tracking-tight text-ink">StockSpace</h1>
-            <p className="mt-0.5 text-sm text-muted">Masuk untuk mengelola inventaris Anda</p>
+            <p className="mt-0.5 text-sm text-muted">
+              {t('Masuk untuk mengelola inventaris Anda')}
+            </p>
           </div>
         </div>
 
@@ -49,7 +53,7 @@ export function LoginPage() {
           noValidate
         >
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-            Email
+            {t('Email')}
             <input
               type="email"
               autoComplete="email"
@@ -60,7 +64,7 @@ export function LoginPage() {
             />
           </label>
           <label className="mt-4 flex flex-col gap-1.5 text-xs font-bold text-ink">
-            Password
+            {t('Password')}
             <input
               type="password"
               autoComplete="current-password"
@@ -86,24 +90,28 @@ export function LoginPage() {
             className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-control bg-primary text-sm font-bold text-white hover:bg-primary-hover disabled:opacity-60"
           >
             <LogIn aria-hidden className="h-4 w-4" />
-            {signIn.isPending ? 'Memproses…' : 'Masuk'}
+            {signIn.isPending ? t('Memproses…') : t('Masuk')}
           </button>
         </form>
 
         {import.meta.env.DEV ? (
           <div className="mt-4 rounded-card border border-dashed border-line bg-surface px-4 py-3 text-xs leading-relaxed text-muted">
-            <p className="font-bold text-ink">Akun demo (development only)</p>
+            <p className="font-bold text-ink">{t('Akun demo (development only)')}</p>
             <p className="mt-1">
               OWNER <code className="rounded bg-canvas px-1">farid@technusa.example</code> · STAFF{' '}
               <code className="rounded bg-canvas px-1">dewi@technusa.example</code> · VIEWER{' '}
               <code className="rounded bg-canvas px-1">viewer@technusa.example</code>
             </p>
             <p className="mt-1">
-              Password: <code className="rounded bg-canvas px-1">stockspace-demo</code> (dari{' '}
-              <code className="rounded bg-canvas px-1">npm run db:seed</code>)
+              {t('Password:')} <code className="rounded bg-canvas px-1">stockspace-demo</code> (
+              {t('dari')} <code className="rounded bg-canvas px-1">npm run db:seed</code>)
             </p>
           </div>
         ) : null}
+
+        <p className="mt-4 text-center text-[11px] text-muted">
+          {lang === 'en' ? 'Language follows your profile menu.' : null}
+        </p>
       </div>
     </div>
   )

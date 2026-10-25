@@ -29,3 +29,8 @@ Thumbs.db
 test-results/
 playwright-report/
 blob-report/
+
+# Screen-recording sources (only the exported GIF is committed)
+*.webm
+*.mp4
+apps/web/e2e/screenshots/

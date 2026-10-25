@@ -89,3 +89,12 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] README screenshots, CONTRIBUTING polish, SECURITY.md review
 - [x] VPS deployment guide over SSH (docs/deployment-vps.md)
 - [x] Verify fresh-clone setup from documented instructions
+
+## Post-MVP polish ✅
+
+- [x] Bilingual UI (Bahasa Indonesia / English) with header + settings switcher
+      and locale-aware number/date formatting
+- [x] Animated onboarding tour (spotlight, keyboard, replay from Settings)
+- [x] 3D delivery animation when a stock movement is committed (reduced-motion aware)
+- [x] Demo GIF for the README, captured end-to-end via Playwright + ffmpeg
+- [x] Emoji removed from the UI for a cleaner look

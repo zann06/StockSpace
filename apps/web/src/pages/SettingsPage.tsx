@@ -2,6 +2,10 @@ import { Save } from 'lucide-react'
 
 import { useCategories, useWarehouseData } from '@/api/hooks'
 import { useWorkspace } from '@/api/workspace-context'
+import { useI18n } from '@/i18n'
+import { restartTour } from '@/components/tour/AppTour'
+import { LanguageSwitch } from '@/components/ui/LanguageSwitch'
+import { Button } from '@/components/ui/Button'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -13,6 +17,7 @@ import { Input } from '@/components/ui/Input'
  * Persistence of settings edits and user management arrive with Phase 4.
  */
 export function SettingsPage() {
+  const { t } = useI18n()
   const { workspace, workspaces, setWorkspaceId } = useWorkspace()
   const categoriesQuery = useCategories()
   const { warehouse, locations } = useWarehouseData()
@@ -30,7 +35,7 @@ export function SettingsPage() {
           <CardHeader title="Workspace" subtitle="Workspace aktif dan tampilan regionalnya" />
           <div className="flex flex-col gap-4 px-5 py-5">
             <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-              Workspace aktif
+              {t('Workspace aktif')}
               <select
                 value={workspace?.id ?? ''}
                 onChange={(event) => setWorkspaceId(event.target.value)}
@@ -45,11 +50,11 @@ export function SettingsPage() {
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-                Mata uang
+                {t('Mata uang')}
                 <Input defaultValue={workspace?.currency ?? 'IDR'} readOnly />
               </label>
               <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-                Zona waktu
+                {t('Zona waktu')}
                 <Input defaultValue={workspace?.timezone ?? 'Asia/Jakarta'} readOnly />
               </label>
             </div>
@@ -64,11 +69,11 @@ export function SettingsPage() {
           <CardHeader title="Gudang" subtitle="Gudang aktif dan lokasinya" />
           <div className="flex flex-col gap-4 px-5 py-5">
             <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-              Nama gudang
+              {t('Nama gudang')}
               <Input defaultValue={warehouse.name || '…'} readOnly />
             </label>
             <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-              Kode gudang
+              {t('Kode gudang')}
               <Input defaultValue={warehouse.code || '…'} readOnly />
             </label>
             <p className="rounded-control bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
@@ -96,13 +101,13 @@ export function SettingsPage() {
               </Badge>
             ))}
             {!categoriesQuery.isLoading && (categoriesQuery.data?.data.length ?? 0) === 0 ? (
-              <span className="text-xs text-muted">Belum ada kategori.</span>
+              <span className="text-xs text-muted">{t('Belum ada kategori.')}</span>
             ) : null}
           </div>
         </Card>
 
         <Card>
-          <CardHeader title="Pengguna" subtitle="Manajemen anggota workspace dan perannya" />
+          <CardHeader title="Pengguna" subtitle={t('Manajemen anggota workspace dan perannya')} />
           <div className="px-5 py-5">
             <p className="rounded-control bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
               Manajemen pengguna (mengundang anggota, mengatur peran Owner/Admin/Staf/Viewer)
@@ -115,8 +120,21 @@ export function SettingsPage() {
               title="Manajemen pengguna tersedia setelah autentikasi Fase 4 terhubung."
               className="mt-3 inline-flex h-9 cursor-not-allowed items-center rounded-control border border-line bg-surface px-4 text-xs font-bold text-muted"
             >
-              + Undang Pengguna
+              {t('+ Undang Pengguna')}
             </button>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title={t('Bahasa / Language')} subtitle={t('Bahasa tampilan aplikasi')} />
+          <div className="flex flex-col gap-4 px-5 py-5">
+            <LanguageSwitch />
+            <p className="rounded-control bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
+              {t('Jalankan tur pengenalan aplikasi kembali.')}
+            </p>
+            <Button variant="secondary" onClick={restartTour} className="w-fit">
+              {t('Lihat tutorial')}
+            </Button>
           </div>
         </Card>
       </div>

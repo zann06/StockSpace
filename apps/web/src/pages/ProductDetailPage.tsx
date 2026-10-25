@@ -17,6 +17,7 @@ import { DemoBadge } from '@/components/common/DemoBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { MOVEMENT_TYPE_LABEL } from '@/lib/movement-meta'
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
   IN: PackagePlus,
@@ -26,13 +27,14 @@ const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
 }
 
 export function ProductDetailPage() {
+  const { t } = useI18n()
   const { id } = useParams<{ id: string }>()
   const productQuery = useProduct(id)
 
   if (productQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm font-semibold text-muted">Memuat produk…</p>
+        <p className="text-sm font-semibold text-muted">{t('Memuat produk…')}</p>
       </div>
     )
   }
@@ -53,14 +55,14 @@ export function ProductDetailPage() {
           action={
             productQuery.error ? (
               <Button size="sm" onClick={() => void productQuery.refetch()}>
-                Coba lagi
+                {t('Coba lagi')}
               </Button>
             ) : (
               <Link
                 to="/inventory"
                 className="inline-flex h-9 items-center rounded-control bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover"
               >
-                Kembali ke Inventaris
+                {t('Kembali ke Inventaris')}
               </Link>
             )
           }
@@ -81,7 +83,7 @@ export function ProductDetailPage() {
           className="inline-flex items-center gap-1 text-xs font-bold text-muted hover:text-primary"
         >
           <ArrowLeft aria-hidden className="h-3.5 w-3.5" />
-          Kembali ke Inventaris
+          {t('Kembali ke Inventaris')}
         </Link>
       </div>
 
@@ -105,11 +107,11 @@ export function ProductDetailPage() {
                 <Badge tone="primary">{product.sku}</Badge>
                 {product.category ? <Badge>{product.category.name}</Badge> : null}
                 {product.active ? (
-                  <Badge tone="success">Aktif</Badge>
+                  <Badge tone="success">{t('Aktif')}</Badge>
                 ) : (
-                  <Badge tone="neutral">Nonaktif</Badge>
+                  <Badge tone="neutral">{t('Nonaktif')}</Badge>
                 )}
-                {low ? <Badge tone="danger">Stok Menipis</Badge> : null}
+                {low ? <Badge tone="danger">{t('Stok Menipis')}</Badge> : null}
               </div>
             </div>
           </div>
@@ -119,12 +121,12 @@ export function ProductDetailPage() {
               disabled
               title="Penyuntingan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
             >
-              Edit Produk
+              {t('Edit Produk')}
             </Button>
             <Link to="/transactions">
               <Button>
                 <ArrowLeftRight aria-hidden className="h-4 w-4" />
-                Catat Pergerakan
+                {t('Catat Pergerakan')}
               </Button>
             </Link>
           </div>
@@ -132,24 +134,24 @@ export function ProductDetailPage() {
 
         <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-card bg-canvas px-4 py-3">
-            <dt className="text-[11px] font-semibold text-muted">Total Stok</dt>
+            <dt className="text-[11px] font-semibold text-muted">{t('Total Stok')}</dt>
             <dd className={`mt-0.5 text-lg font-extrabold ${low ? 'text-danger-fg' : 'text-ink'}`}>
               {formatNumber(quantity)}{' '}
               <span className="text-xs font-semibold text-muted">{product.unit}</span>
             </dd>
           </div>
           <div className="rounded-card bg-canvas px-4 py-3">
-            <dt className="text-[11px] font-semibold text-muted">Nilai Stok</dt>
+            <dt className="text-[11px] font-semibold text-muted">{t('Nilai Stok')}</dt>
             <dd className="mt-0.5 text-lg font-extrabold text-ink">{formatCurrency(stockValue)}</dd>
           </div>
           <div className="rounded-card bg-canvas px-4 py-3">
-            <dt className="text-[11px] font-semibold text-muted">Ambang Pesan Ulang</dt>
+            <dt className="text-[11px] font-semibold text-muted">{t('Ambang Pesan Ulang')}</dt>
             <dd className="mt-0.5 text-lg font-extrabold text-ink">
               {formatNumber(product.reorderThreshold)}
             </dd>
           </div>
           <div className="rounded-card bg-canvas px-4 py-3">
-            <dt className="text-[11px] font-semibold text-muted">Diperbarui</dt>
+            <dt className="text-[11px] font-semibold text-muted">{t('Diperbarui')}</dt>
             <dd className="mt-0.5 text-sm font-extrabold text-ink">
               {formatRelativeTime(product.updatedAt)}
             </dd>
@@ -161,7 +163,7 @@ export function ProductDetailPage() {
         ) : null}
         {product.barcode ? (
           <p className="mt-2 text-xs text-muted">
-            Barcode: <span className="font-semibold text-ink">{product.barcode}</span>
+            {t('Barcode')}: <span className="font-semibold text-ink">{product.barcode}</span>
           </p>
         ) : null}
       </Card>
@@ -169,13 +171,13 @@ export function ProductDetailPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card className="overflow-hidden">
           <CardHeader
-            title="Stok per Lokasi"
+            title={t('Stok per Lokasi')}
             subtitle={`${product.balances.length} lokasi menyimpan produk ini`}
           />
           {product.balances.length === 0 ? (
             <EmptyState
               icon={PackageMinus}
-              title="Belum ada stok tersimpan"
+              title={t('Belum ada stok tersimpan')}
               description="Stok akan muncul di sini setelah barang masuk diterima di sebuah lokasi."
             />
           ) : (
@@ -203,18 +205,18 @@ export function ProductDetailPage() {
 
         <Card className="overflow-hidden">
           <CardHeader
-            title="Riwayat Pergerakan"
+            title={t('Riwayat Pergerakan')}
             subtitle="Transaksi terakhir untuk produk ini"
             action={
               <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">
-                Lihat semua
+                {t('Lihat semua')}
               </Link>
             }
           />
           {product.movements.length === 0 ? (
             <EmptyState
               icon={PackageMinus}
-              title="Belum ada pergerakan"
+              title={t('Belum ada pergerakan')}
               description="Transaksi barang masuk/keluar untuk produk ini akan tercatat di sini."
             />
           ) : (
@@ -228,7 +230,7 @@ export function ProductDetailPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-ink">
-                        {MOVEMENT_TYPE_LABEL[movement.type]}
+                        {t(MOVEMENT_TYPE_LABEL[movement.type])}
                         {movement.reference ? (
                           <span className="ml-2 font-mono text-xs font-semibold text-muted">
                             {movement.reference}

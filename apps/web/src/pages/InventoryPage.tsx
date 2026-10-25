@@ -11,12 +11,14 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Input'
 import { formatCurrency, formatNumber } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 type SortKey = 'name' | 'stock-asc' | 'value-desc'
 
 const PAGE_SIZE = 8
 
 export function InventoryPage() {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [category, setCategory] = useState('ALL')
@@ -96,8 +98,8 @@ export function InventoryPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Inventaris"
-        subtitle="Daftar produk dan penyebaran stok per lokasi penyimpanan."
+        title={t('Inventaris')}
+        subtitle={t('Daftar produk dan penyebaran stok per lokasi penyimpanan.')}
         meta={<DemoBadge />}
         actions={
           <Button
@@ -105,21 +107,21 @@ export function InventoryPage() {
             title="Pembuatan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
           >
             <PackagePlus aria-hidden className="h-4 w-4" />
-            Tambah Produk
+            {t('Tambah Produk')}
           </Button>
         }
       />
 
       {locationFilter ? (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Difilter berdasarkan lokasi</span>
+          <span className="text-muted">{t('Difilter berdasarkan lokasi')}</span>
           <Badge tone="primary">{locationFilter.toUpperCase()}</Badge>
           <button
             type="button"
             onClick={clearLocationFilter}
             className="text-xs font-bold text-primary hover:underline"
           >
-            Hapus filter
+            {t('Hapus filter')}
           </button>
         </div>
       ) : null}
@@ -129,12 +131,12 @@ export function InventoryPage() {
           <SearchInput
             value={query}
             onChange={(event) => applySearch(event.target.value)}
-            placeholder="Cari nama, SKU, atau barcode…"
-            aria-label="Cari produk"
+            placeholder={t('Cari nama, SKU, atau barcode…')}
+            aria-label={t('Cari produk')}
             className="min-w-[220px] flex-1"
           />
           <label className="flex items-center gap-2 text-xs font-semibold text-muted">
-            Kategori
+            {t('Kategori')}
             <select
               value={category}
               onChange={(event) => {
@@ -143,7 +145,7 @@ export function InventoryPage() {
               }}
               className="h-10 rounded-control border border-line bg-surface px-3 text-sm font-semibold text-ink"
             >
-              <option value="ALL">Semua</option>
+              <option value="ALL">{t('Semua')}</option>
               {(categoriesQuery.data?.data ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -152,38 +154,40 @@ export function InventoryPage() {
             </select>
           </label>
           <label className="flex items-center gap-2 text-xs font-semibold text-muted">
-            Urutkan
+            {t('Urutkan')}
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-10 rounded-control border border-line bg-surface px-3 text-sm font-semibold text-ink"
             >
-              <option value="name">Nama A–Z</option>
-              <option value="stock-asc">Stok terendah</option>
-              <option value="value-desc">Nilai tertinggi</option>
+              <option value="name">{t('Nama A–Z')}</option>
+              <option value="stock-asc">{t('Stok terendah')}</option>
+              <option value="value-desc">{t('Nilai tertinggi')}</option>
             </select>
           </label>
         </div>
 
         {productsQuery.isLoading ? (
-          <p className="px-5 py-10 text-center text-sm font-semibold text-muted">Memuat produk…</p>
+          <p className="px-5 py-10 text-center text-sm font-semibold text-muted">
+            {t('Memuat produk…')}
+          </p>
         ) : productsQuery.error ? (
           <div className="px-5 py-8 text-center">
-            <p className="text-sm font-bold text-ink">Gagal memuat produk</p>
+            <p className="text-sm font-bold text-ink">{t('Gagal memuat produk')}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">{productsQuery.error.message}</p>
             <button
               type="button"
               onClick={() => void productsQuery.refetch()}
               className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
             >
-              Coba lagi
+              {t('Coba lagi')}
             </button>
           </div>
         ) : pageRows.length === 0 ? (
           <EmptyState
             icon={SearchX}
-            title="Tidak ada produk yang cocok"
-            description="Coba ubah kata kunci pencarian, kategori, atau hapus filter lokasi."
+            title={t('Tidak ada produk yang cocok')}
+            description={t('Coba ubah kata kunci pencarian, kategori, atau hapus filter lokasi.')}
             action={
               <Button
                 variant="secondary"
@@ -194,7 +198,7 @@ export function InventoryPage() {
                   clearLocationFilter()
                 }}
               >
-                Reset filter
+                {t('Reset filter')}
               </Button>
             }
           />
@@ -204,22 +208,22 @@ export function InventoryPage() {
               <thead>
                 <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
                   <th scope="col" className="px-4 py-3">
-                    Produk
+                    {t('Produk')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Kategori
+                    {t('Kategori')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Lokasi
+                    {t('Lokasi')}
                   </th>
                   <th scope="col" className="px-4 py-3 text-right">
-                    Stok
+                    {t('Stok')}
                   </th>
                   <th scope="col" className="px-4 py-3 text-right">
-                    Harga Pokok
+                    {t('Harga Pokok')}
                   </th>
                   <th scope="col" className="px-4 py-3 text-right">
-                    Ambang
+                    {t('Ambang')}
                   </th>
                 </tr>
               </thead>
@@ -282,7 +286,7 @@ export function InventoryPage() {
                         </span>
                         {low ? (
                           <span className="ml-1.5 text-[11px] font-bold text-danger-fg">
-                            Menipis
+                            {t('Menipis')}
                           </span>
                         ) : null}
                       </td>
@@ -312,7 +316,7 @@ export function InventoryPage() {
               size="sm"
               onClick={() => setPage((value) => Math.max(0, value - 1))}
               disabled={safePage === 0}
-              aria-label="Halaman sebelumnya"
+              aria-label={t('Halaman sebelumnya')}
             >
               <ChevronLeft aria-hidden className="h-4 w-4" />
             </Button>
@@ -324,7 +328,7 @@ export function InventoryPage() {
               size="sm"
               onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}
               disabled={safePage >= pageCount - 1}
-              aria-label="Halaman berikutnya"
+              aria-label={t('Halaman berikutnya')}
             >
               <ChevronRight aria-hidden className="h-4 w-4" />
             </Button>
@@ -334,7 +338,7 @@ export function InventoryPage() {
 
       <p className="flex items-center gap-1.5 text-xs text-muted">
         <Package aria-hidden className="h-3.5 w-3.5" />
-        Klik baris produk untuk melihat detail, penyebaran lokasi, dan riwayat pergerakan.
+        {t('Klik baris produk untuk melihat detail, penyebaran lokasi, dan riwayat pergerakan.')}
       </p>
     </div>
   )

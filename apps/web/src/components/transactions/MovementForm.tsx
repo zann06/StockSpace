@@ -4,9 +4,11 @@ import { z } from 'zod'
 
 import type { MovementKind } from '@/api/hooks'
 import { useCreateMovement, useProductsList, useWarehouseData } from '@/api/hooks'
+import { emitMovement } from '@/lib/events'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 /**
  * Stock movement form (stock-in / stock-out / transfer / adjustment).
@@ -17,42 +19,42 @@ import { formatNumber } from '@/lib/format'
 const KIND_META: Record<
   MovementKind,
   {
-    title: string
-    description: string
-    submitLabel: string
+    titleKey: string
+    descriptionKey: string
+    submitLabelKey: string
     needsSource: boolean
     needsDestination: boolean
     needsReason: boolean
   }
 > = {
   'stock-in': {
-    title: 'Barang Masuk',
-    description: 'Terima stok dari pemasok ke lokasi penyimpanan.',
-    submitLabel: 'Catat Barang Masuk',
+    titleKey: 'Barang Masuk',
+    descriptionKey: 'Terima stok dari pemasok ke lokasi penyimpanan.',
+    submitLabelKey: 'Catat Barang Masuk',
     needsSource: false,
     needsDestination: true,
     needsReason: false,
   },
   'stock-out': {
-    title: 'Barang Keluar',
-    description: 'Keluarkan stok dari lokasi penyimpanan (penjualan/pemakaian).',
-    submitLabel: 'Catat Barang Keluar',
+    titleKey: 'Barang Keluar',
+    descriptionKey: 'Keluarkan stok dari lokasi penyimpanan (penjualan/pemakaian).',
+    submitLabelKey: 'Catat Barang Keluar',
     needsSource: true,
     needsDestination: false,
     needsReason: false,
   },
   transfer: {
-    title: 'Transfer Stok',
-    description: 'Pindahkan stok antar lokasi/level — jumlah tetap terjaga.',
-    submitLabel: 'Catat Transfer',
+    titleKey: 'Transfer Stok',
+    descriptionKey: 'Pindahkan stok antar lokasi/level — jumlah tetap terjaga.',
+    submitLabelKey: 'Catat Transfer',
     needsSource: true,
     needsDestination: true,
     needsReason: false,
   },
   adjustment: {
-    title: 'Penyesuaian Stok',
-    description: 'Koreksi stok (stock opname, kerusakan) — wajib menyertakan alasan.',
-    submitLabel: 'Catat Penyesuaian',
+    titleKey: 'Penyesuaian Stok',
+    descriptionKey: 'Koreksi stok (stock opname, kerusakan) — wajib menyertakan alasan.',
+    submitLabelKey: 'Catat Penyesuaian',
     needsSource: true,
     needsDestination: false,
     needsReason: true,
@@ -82,6 +84,7 @@ const EMPTY_STATE: FormState = {
 }
 
 export function MovementForm({ kind }: { kind: MovementKind }) {
+  const { t } = useI18n()
   const meta = KIND_META[kind]
   const [form, setForm] = useState<FormState>(EMPTY_STATE)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -179,8 +182,22 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         note: form.note.trim() || null,
       })
       setSuccess(
-        `Transaksi berhasil dicatat${result.data.reference ? ` (ref: ${result.data.reference})` : ''}. Saldo dan riwayat telah diperbarui.`
+        `${t('Transaksi berhasil dicatat')}${result.data.reference ? ` (ref: ${result.data.reference})` : ''}. ${t('Saldo dan riwayat telah diperbarui.')}`
       )
+      emitMovement({
+        type:
+          kind === 'stock-in'
+            ? 'IN'
+            : kind === 'stock-out'
+              ? 'OUT'
+              : kind === 'transfer'
+                ? 'TRANSFER'
+                : 'ADJUSTMENT',
+        productId: form.productId,
+        quantity: parsed.data.quantity,
+        destinationLocationId: meta.needsDestination ? form.destinationLocationId : null,
+        sourceLocationId: meta.needsSource ? form.sourceLocationId : null,
+      })
       setForm((previous) => ({ ...previous, quantity: '', reference: '', note: '' }))
     } catch (error) {
       setFailure(error instanceof Error ? error.message : 'Transaksi gagal dicatat.')
@@ -194,8 +211,8 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
 
   return (
     <Card className="p-5">
-      <h2 className="text-sm font-bold text-ink">{meta.title}</h2>
-      <p className="mt-0.5 text-xs text-muted">{meta.description}</p>
+      <h2 className="text-sm font-bold text-ink">{t(meta.titleKey)}</h2>
+      <p className="mt-0.5 text-xs text-muted">{t(meta.descriptionKey)}</p>
 
       <form
         className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2"
@@ -212,7 +229,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
               className={inputClass('productId')}
               aria-invalid={!!fieldErrors.productId}
             >
-              <option value="">— Pilih produk —</option>
+              <option value="">{t('— Pilih produk —')}</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name} ({product.sku}) — stok {formatNumber(product.totalQuantity)}
@@ -228,7 +245,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         {/* Source location */}
         {meta.needsSource ? (
           <LocationPicker
-            label="Lokasi Sumber"
+            label={t('Lokasi Sumber')}
             required
             value={form.sourceLocationId}
             levelValue={form.sourceLevel}
@@ -237,7 +254,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
             onLevelChange={(value) => setField('sourceLevel', value)}
             balanceHint={
               selectedProduct && form.sourceLocationId
-                ? `Stok produk ini di sini: ${formatNumber(
+                ? `${t('Stok produk ini di sini:')} ${formatNumber(
                     balanceAt(form.sourceLocationId, Number(form.sourceLevel)) ?? 0
                   )} ${selectedProduct.unit}`
                 : null
@@ -249,7 +266,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         {/* Destination location */}
         {meta.needsDestination ? (
           <LocationPicker
-            label="Lokasi Tujuan"
+            label={t('Lokasi Tujuan')}
             required
             value={form.destinationLocationId}
             levelValue={form.destinationLevel}
@@ -258,7 +275,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
             onLevelChange={(value) => setField('destinationLevel', value)}
             balanceHint={
               selectedProduct && form.destinationLocationId
-                ? `Stok produk ini di sini: ${formatNumber(
+                ? `${t('Stok produk ini di sini:')} ${formatNumber(
                     balanceAt(form.destinationLocationId, Number(form.destinationLevel)) ?? 0
                   )} ${selectedProduct.unit}`
                 : null
@@ -277,7 +294,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
               value={form.quantity}
               onChange={(event) => setField('quantity', event.target.value)}
               className={inputClass('quantity')}
-              placeholder={kind === 'adjustment' ? 'mis. -2 atau 5' : 'mis. 10'}
+              placeholder={kind === 'adjustment' ? 'mis. -2 / 5' : 'mis. 10'}
               aria-invalid={!!fieldErrors.quantity}
             />
           </label>
@@ -289,13 +306,13 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         {/* Reference */}
         <div>
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-            Referensi (opsional)
+            {t('Referensi')} (ops.)
             <input
               type="text"
               value={form.reference}
               onChange={(event) => setField('reference', event.target.value)}
               className={inputClass('reference')}
-              placeholder="mis. PO-2026-120"
+              placeholder="PO-2026-120"
             />
           </label>
         </div>
@@ -303,7 +320,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         {/* Note / reason */}
         <div className="md:col-span-2">
           <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-            {meta.needsReason ? 'Alasan Penyesuaian' : 'Catatan (opsional)'}
+            {meta.needsReason ? t('Alasan Penyesuaian') : `${t('Catatan')} (ops.)`}
             {meta.needsReason ? <span className="text-danger-fg">*</span> : null}
             <textarea
               value={form.note}
@@ -327,7 +344,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
 
         <div className="md:col-span-2">
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Menyimpan…' : meta.submitLabel}
+            {mutation.isPending ? t('Menyimpan…') : t(meta.submitLabelKey)}
           </Button>
         </div>
       </form>
@@ -371,6 +388,7 @@ function LocationPicker({
   balanceHint,
   error,
 }: LocationPickerProps) {
+  const { t } = useI18n()
   const selected = locations.find((location) => location.id === value)
   const showLevel = selected?.type === 'RACK'
 
@@ -386,7 +404,7 @@ function LocationPicker({
           }`}
           aria-invalid={!!error}
         >
-          <option value="">— Pilih lokasi —</option>
+          <option value="">{t('— Pilih lokasi —')}</option>
           {locations.map((location) => (
             <option key={location.id} value={location.id}>
               {location.label} ({location.code})
@@ -403,9 +421,9 @@ function LocationPicker({
               onChange={(event) => onLevelChange(event.target.value)}
               className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
             >
-              <option value="1">L1 (bawah)</option>
-              <option value="2">L2 (tengah)</option>
-              <option value="3">L3 (atas)</option>
+              <option value="1">L1</option>
+              <option value="2">L2</option>
+              <option value="3">L3</option>
             </select>
           </label>
         </div>

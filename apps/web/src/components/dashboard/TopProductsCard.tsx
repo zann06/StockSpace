@@ -4,28 +4,30 @@ import { ChevronRight } from 'lucide-react'
 import type { DashboardTopMovedItem } from '@/api/types'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 /** Most-moved products over the last 30 days (from the dashboard summary). */
 export function TopProductsCard({ items }: { items: DashboardTopMovedItem[] }) {
+  const { t } = useI18n()
   const max = items[0]?.moved ?? 1
 
   return (
     <Card className="flex flex-col">
       <CardHeader
-        title="Produk Terlaris"
-        subtitle="Unit bergerak — 30 hari terakhir"
+        title={t('Produk Terlaris')}
+        subtitle={t('Unit bergerak — 30 hari terakhir')}
         action={
           <Link
             to="/reports"
             className="flex items-center gap-0.5 text-xs font-bold text-primary hover:underline"
           >
-            Lihat semua <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+            {t('Lihat semua')} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
           </Link>
         }
       />
       {items.length === 0 ? (
         <p className="flex flex-1 items-center justify-center px-5 py-8 text-xs text-muted">
-          Belum ada pergerakan stok dalam 30 hari terakhir.
+          {t('Belum ada pergerakan stok dalam 30 hari terakhir.')}
         </p>
       ) : (
         <ul className="flex flex-1 flex-col justify-center gap-4 px-5 py-4">
@@ -54,7 +56,7 @@ export function TopProductsCard({ items }: { items: DashboardTopMovedItem[] }) {
               </div>
               <span className="shrink-0 text-right">
                 <span className="block text-sm font-bold text-ink">{formatNumber(item.moved)}</span>
-                <span className="block text-[11px] text-muted">bergerak</span>
+                <span className="block text-[11px] text-muted">{t('bergerak')}</span>
               </span>
             </li>
           ))}

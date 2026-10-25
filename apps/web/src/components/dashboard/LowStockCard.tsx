@@ -4,26 +4,28 @@ import { AlertTriangle, ChevronRight } from 'lucide-react'
 import type { DashboardLowStockItem } from '@/api/types'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatNumber } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 /** Low-stock summary — quantity vs reorder threshold with proportional bars. */
 export function LowStockCard({ items }: { items: DashboardLowStockItem[] }) {
+  const { t } = useI18n()
   return (
     <Card className="flex flex-col">
       <CardHeader
-        title="Stok Minimum"
-        subtitle={`${items.length} produk di bawah ambang pesan ulang`}
+        title={t('Stok Minimum')}
+        subtitle={`${items.length} ${t('produk di bawah ambang pesan ulang')}`}
         action={
           <Link
             to="/reports"
             className="flex items-center gap-0.5 text-xs font-bold text-primary hover:underline"
           >
-            Lihat semua <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+            {t('Lihat semua')} <ChevronRight aria-hidden className="h-3.5 w-3.5" />
           </Link>
         }
       />
       {items.length === 0 ? (
         <p className="flex flex-1 items-center justify-center px-5 py-8 text-xs text-muted">
-          Semua produk berada di atas ambang stok. 🎉
+          {t('Semua produk berada di atas ambang stok.')}
         </p>
       ) : (
         <ul className="flex flex-1 flex-col justify-center gap-4 px-5 py-4">

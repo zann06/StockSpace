@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { SearchInput } from '@/components/ui/Input'
 import { formatNumber, formatRelativeTime } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 type Tab = MovementType | 'ALL'
 
@@ -53,6 +54,7 @@ function movementQuantityClass(type: MovementType): string {
 }
 
 export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
+  const { t } = useI18n()
   const [searchParams] = useSearchParams()
   const locationFilter = searchParams.get('loc')
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -85,17 +87,19 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Transaksi"
-        subtitle="Catat dan pantau pergerakan stok — barang masuk, keluar, transfer, dan penyesuaian."
+        title={t('Transaksi')}
+        subtitle={t(
+          'Catat dan pantau pergerakan stok — barang masuk, keluar, transfer, dan penyesuaian.'
+        )}
         meta={<DemoBadge />}
       />
 
       {locationFilter ? (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Difilter berdasarkan lokasi</span>
+          <span className="text-muted">{t('Difilter berdasarkan lokasi')}</span>
           <Badge tone="primary">{locationFilter.toUpperCase()}</Badge>
           <Link to="/transactions" className="text-xs font-bold text-primary hover:underline">
-            Hapus filter
+            {t('Hapus filter')}
           </Link>
         </div>
       ) : null}
@@ -106,7 +110,7 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           <div
             role="tablist"
-            aria-label="Filter jenis transaksi"
+            aria-label={t('Filter jenis transaksi')}
             className="flex flex-wrap items-center gap-1.5"
           >
             {TABS.map((item) => (
@@ -122,26 +126,26 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
                     : 'text-muted hover:bg-canvas hover:text-ink'
                 }`}
               >
-                {item.label}
+                {t(item.label)}
               </button>
             ))}
           </div>
           <SearchInput
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari produk, referensi, aktor…"
-            aria-label="Cari transaksi"
+            placeholder={t('Cari produk, referensi, aktor…')}
+            aria-label={t('Cari transaksi')}
             className="ml-auto min-w-[220px] w-full sm:w-64"
           />
         </div>
 
         {movementsQuery.isLoading ? (
           <p className="px-5 py-10 text-center text-sm font-semibold text-muted">
-            Memuat transaksi…
+            {t('Memuat transaksi…')}
           </p>
         ) : movementsQuery.error ? (
           <div className="px-5 py-8 text-center">
-            <p className="text-sm font-bold text-ink">Gagal memuat transaksi</p>
+            <p className="text-sm font-bold text-ink">{t('Gagal memuat transaksi')}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
               {movementsQuery.error.message}
             </p>
@@ -150,17 +154,19 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
               onClick={() => void movementsQuery.refetch()}
               className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
             >
-              Coba lagi
+              {t('Coba lagi')}
             </button>
           </div>
         ) : rows.length === 0 ? (
           <EmptyState
             icon={SearchX}
-            title="Tidak ada transaksi yang cocok"
+            title={t('Tidak ada transaksi yang cocok')}
             description={
               tab === 'ALL'
-                ? 'Belum ada transaksi tercatat. Gunakan tab di atas untuk mencatat transaksi baru.'
-                : `Belum ada transaksi ${MOVEMENT_TYPE_LABEL[tab as MovementType]} — catat lewat formulir di atas.`
+                ? t(
+                    'Belum ada transaksi tercatat. Gunakan tab di atas untuk mencatat transaksi baru.'
+                  )
+                : `${t('Belum ada transaksi')} ${t(MOVEMENT_TYPE_LABEL[tab as MovementType])} — ${t('catat lewat formulir di atas.')}`
             }
           />
         ) : (
@@ -169,25 +175,25 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
               <thead>
                 <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
                   <th scope="col" className="px-4 py-3">
-                    Produk
+                    {t('Produk')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Jenis
+                    {t('Jenis')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Dari → Ke
+                    {t('Dari → Ke')}
                   </th>
                   <th scope="col" className="px-4 py-3 text-right">
-                    Qty
+                    {t('Qty')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Referensi
+                    {t('Referensi')}
                   </th>
                   <th scope="col" className="px-4 py-3">
-                    Aktor
+                    {t('Aktor')}
                   </th>
                   <th scope="col" className="px-4 py-3 text-right">
-                    Waktu
+                    {t('Waktu')}
                   </th>
                 </tr>
               </thead>
@@ -210,7 +216,7 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
                       <td className="px-4 py-3">
                         <Badge tone={TYPE_TONE[movement.type]}>
                           <Icon aria-hidden className="h-3 w-3" />
-                          {MOVEMENT_TYPE_LABEL[movement.type]}
+                          {t(MOVEMENT_TYPE_LABEL[movement.type])}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted">
@@ -250,10 +256,11 @@ export function TransactionsPage({ initialTab = 'ALL' }: { initialTab?: Tab }) {
 
         <div className="border-t border-line px-4 py-3">
           <p className="text-xs text-muted">
-            Menampilkan {formatNumber(rows.length)} transaksi terbaru
-            {tab !== 'ALL' ? ` (${MOVEMENT_TYPE_LABEL[tab as MovementType]})` : ''}. Setiap
-            transaksi tersimpan permanen — koreksi dilakukan lewat penyesuaian, bukan menghapus
-            riwayat.
+            {t('Menampilkan')} {formatNumber(rows.length)} {t('transaksi terbaru')}
+            {tab !== 'ALL' ? ` (${t(MOVEMENT_TYPE_LABEL[tab as MovementType])})` : ''}.{' '}
+            {t(
+              'Setiap transaksi tersimpan permanen — koreksi dilakukan lewat penyesuaian, bukan menghapus riwayat.'
+            )}
           </p>
         </div>
       </Card>

@@ -2,99 +2,92 @@
 
 **Open-source inventory management with an interactive 3D warehouse.**
 
-StockSpace helps a small business manage inventory while seeing exactly where
-products are stored — receive, store, move, adjust, and issue stock, and explore
-your racks in a real 3D scene that reflects your saved warehouse layout.
+StockSpace helps small businesses manage inventory while seeing exactly where
+products are stored — receive, move, adjust, and issue stock, and explore your
+racks in a real 3D scene driven by your saved warehouse layout. Available in
+**Bahasa Indonesia and English**.
 
-> **Status: MVP complete (Phases 0–5).** Interactive 3D warehouse, live
-> PostgreSQL data, transactional stock movements, email/password sign-in with
-> server-enforced roles, filtered reports + CSV export, grouped low-stock
-> notifications, rate limiting, an axe-checked accessibility pass, and a
-> Playwright end-to-end smoke test. See the
-> [roadmap](#roadmap) and [implementation checklist](docs/implementation-checklist.md).
+[![CI](https://github.com/your-fork/stockspace/actions/workflows/ci.yml/badge.svg)](../../actions)
+[License: MIT](LICENSE)
 
-## Features (current)
+## Demo
 
-- 📊 **Dashboard** — total stock, low-stock count, inventory value, today's
-  transactions, movement chart, most-moved products — all computed from the
-  dataset (never hardcoded).
-- 🧊 **Interactive 3D warehouse** — procedural racks, shelves, cargo boxes,
-  staging & packing areas, and a forklift. Click/hover to select, orbit/pan/
-  zoom, reset camera, 3D ↔ 2D top-down toggle, level filters (L1–L3),
-  fullscreen, and floating location labels.
-- ♿ **Accessible fallback** — when WebGL is unavailable the scene is replaced
-  by a keyboard-navigable location list; reduced-motion preferences are
-  respected; visible focus states everywhere.
-- 📦 **Inventory & product detail** — searchable, sortable, paginated product
-  table with per-location stock, thresholds, and movement history.
-- 🧾 **Transactions** — read-only movement history with type filters
-  (the recording API is live — the web UI connects to it in Phase 3).
-- 🗄️ **REST API + PostgreSQL** — Fastify API with Zod validation, Prisma
-  migrations, and stock-in/out/transfer/adjustment inside database
-  transactions (overselling is impossible by construction and covered by
-  integration tests, including concurrent requests).
-- 🔍 **Global search** — products by name/SKU/barcode, locations by code.
-- 🔔 **Grouped low-stock notifications**.
-- 📱 **Responsive** — desktop sidebar collapses to an off-canvas menu on mobile.
+End-to-end flow recorded against the real stack (API + PostgreSQL + browser) —
+sign in, browse the 3D warehouse, record a stock-in, watch the delivery box fly
+to its rack, and see the dashboard update:
 
-All demo data is fictional (see `apps/web/src/mocks/`) and labelled with a
-visible **"Mode Demo"** badge.
+![StockSpace demo — login, 3D warehouse, stock-in with delivery animation, updated dashboard](docs/screenshots/demo-stock-in.gif)
 
 ## Screenshots
-
-Built as real React components against `design-reference.png` (repository
-root); captured by the Playwright smoke test against the live stack.
 
 | | |
 | --- | --- |
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Warehouse 3D](docs/screenshots/warehouse.png) |
 | ![Inventory](docs/screenshots/inventory.png) | ![Login](docs/screenshots/login.png) |
 
+*Captured by the Playwright smoke test against the live stack; the UI is built
+as real React components following `design-reference.png`.*
+
+## Features
+
+- **Interactive 3D warehouse** — procedural racks, shelves, cargo boxes,
+  staging/packing areas. Click a rack to open its items and movement history;
+  orbit/pan/zoom, camera reset, 3D/2D top-down toggle, level filters (L1–L3),
+  fullscreen, and an accessible location list when WebGL is unavailable.
+  A committed stock movement triggers a short **delivery animation** (a cargo
+  box flies to the destination rack) — skipped under reduced-motion.
+- **Real inventory workflows** — stock in/out/transfer/adjustment forms write
+  to PostgreSQL inside database transactions; overselling is impossible by
+  construction and covered by integration tests, including concurrent requests.
+- **Dashboard & reports from live data** — KPIs, low-stock summary, top-moved
+  products, 7-day movement chart, per-location utilization, filtered movement
+  report, and CSV export.
+- **Authentication & roles** — email/password sign-in with cookie sessions
+  (better-auth). Roles enforced server-side: VIEWER read-only, STAFF records
+  movements, ADMIN+ edits products. Workspaces are membership-scoped.
+- **Low-stock notifications** — created automatically when a product crosses
+  its reorder threshold, grouped (one unread alert per product).
+- **Onboarding tour** — an animated spotlight tour introduces the app on first
+  sign-in; replay it anytime from Settings.
+- **Bilingual (ID/EN)** — switch language from the header or profile menu;
+  dates and number formats follow the active locale.
+- **Rate limiting, a11y, and E2E** — auth 20/min, movements 60/min, global
+  300/min; axe accessibility scan in CI; Playwright smoke test boots the real
+  API + web + database.
+- **Responsive & accessible** — off-canvas navigation on mobile, keyboard
+  support throughout, visible focus states, WCAG-AA text contrast, and
+  reduced-motion respected.
+
+Demo data is a fictional seeded workspace ("Toko TechNusa") and every page
+labels it with a visible badge.
+
 ## Tech stack
 
-| Layer    | Choice                                                              |
-| -------- | ------------------------------------------------------------------- |
-| Frontend | React 19, TypeScript (strict), Vite, React Router, Tailwind CSS v4  |
-| 3D       | React Three Fiber, Drei, Three.js (procedural geometry, no models)  |
-| Charts   | Recharts                                                            |
-| Icons    | lucide-react (ISC) · Font: Plus Jakarta Sans via Fontsource (OFL)   |
-| Backend  | Fastify 5 + TypeScript · Zod validation                              |
-| Database | PostgreSQL 16 + Prisma 6 (migrations, seed)                          |
-| Infra    | Docker Compose, GitHub Actions CI, nginx for static hosting          |
+| Layer    | Choice                                                             |
+| -------- | ------------------------------------------------------------------ |
+| Frontend | React 19, TypeScript (strict), Vite, React Router, Tailwind CSS v4 |
+| 3D       | React Three Fiber, Drei, Three.js (procedural geometry, no models) |
+| Charts   | Recharts · Icons: lucide-react (ISC) · Font: Plus Jakarta Sans (OFL) |
+| Backend  | Fastify 5 + TypeScript · better-auth (sessions) · Zod validation    |
+| Database | PostgreSQL 16 + Prisma 6 (migrations, seed)                         |
+| Infra    | Docker Compose, GitHub Actions CI, nginx for static hosting         |
 
 ## Quick start (local development)
 
-Requirements: **Node.js ≥ 20.19** (22 recommended; `.nvmrc` pins 22), npm, and
-Docker (for PostgreSQL).
+Requirements: **Node.js ≥ 20.19** (`.nvmrc` pins 22), npm, and Docker (for
+PostgreSQL).
 
 ```bash
-npm install       # installs all workspaces and generates the Prisma client
-npm run db:up     # start PostgreSQL (host port 5433; a local Postgres on 5432 is fine)
+git clone https://github.com/<your-fork>/stockspace.git
+cd stockspace
+npm install            # installs all workspaces + generates the Prisma client
 cp .env.example .env   # then adjust if needed
+npm run db:up          # PostgreSQL on host port 5433 (container 5432)
 npm run db:migrate     # apply migrations
-npm run db:seed        # load the fictional demo workspace (Toko TechNusa)
+npm run db:seed        # fictional demo workspace + development accounts
 
 npm run dev            # web app on http://localhost:5173
 npm run dev:api        # REST API on http://localhost:4000
-```
-
-The seeded workspace id is printed by `db:seed` — send it as the
-`X-Workspace-Id` header on API calls (replaced by real sessions in Phase 4):
-
-```bash
-curl -H "X-Workspace-Id: <id>" http://localhost:4000/api/dashboard/summary
-```
-
-Quality gates:
-
-```bash
-npm run lint         # ESLint (web + api)
-npm run typecheck    # tsc (strict)
-npm run test         # Vitest (web unit/component + api integration; api needs db:up)
-npm run build        # production build (web + api)
-npm run format:check # Prettier
-npm run test:e2e -w apps/web   # Playwright smoke + axe a11y scan (needs db:up;
-                               # boots the API + web automatically, seeds stockspace_e2e)
 ```
 
 **Sign in** at `/login` with the seeded development accounts (fictional
@@ -112,23 +105,38 @@ production (roles are enforced server-side on every request).
 ### Docker
 
 ```bash
-docker compose up --build   # web on http://localhost:8080, PostgreSQL on :5432
+docker compose up --build   # web on :8080, API on :4000, PostgreSQL on :5433
 ```
 
-The `db` service is ready for Phase 2; `web` builds the frontend into nginx.
-The API service will be added in Phase 2.
+The API applies migrations on boot (`prisma migrate deploy`). For production,
+set a real `BETTER_AUTH_SECRET` — see the
+[VPS deployment guide](docs/deployment-vps.md).
+
+## Testing & quality gates
+
+```bash
+npm run lint         # ESLint (web + api)
+npm run typecheck    # tsc (strict)
+npm run test         # Vitest — web unit/component + API integration (real PostgreSQL)
+npm run build        # production build (web + api)
+npm run format:check # Prettier
+npm run test:e2e -w apps/web   # Playwright smoke + axe a11y scan
+                              # (boots API + web automatically, seeds stockspace_e2e)
+```
+
+CI runs the same gates in three jobs — `web`, `api` (PostgreSQL service
+container), and `e2e` (PostgreSQL + chromium).
 
 ## Project structure
 
 ```text
 stockspace/
-├── apps/web/          # React + TypeScript frontend (current focus)
-├── packages/shared/   # Shared Zod schemas/types (Phase 2)
-├── prisma/            # Schema, migrations, seed (Phase 2)
-├── docs/              # architecture, implementation checklist, …
+├── apps/web/          # React frontend (3D warehouse, dashboards, forms, e2e specs)
+├── apps/api/          # Fastify REST API (auth, movements, reports)
+├── prisma/            # Schema, migrations, fictional seed
+├── docs/              # architecture, database, 3D warehouse, VPS deployment
 ├── .github/           # CI workflow, issue & PR templates
-├── docker-compose.yml
-└── PRD.md             # Product requirements driving the roadmap
+└── docker-compose.yml
 ```
 
 ## Documentation
@@ -141,22 +149,25 @@ stockspace/
 
 ## Roadmap
 
-- [x] **Phase 0** — monorepo, TS/ESLint/Prettier, env validation, Docker, CI
-- [x] **Phase 1** — UI shell, dashboard, interactive 3D prototype (demo data)
-- [x] **Phase 2** — Fastify API, PostgreSQL + Prisma, stock-in/out/transfer/
-      adjustment with DB transactions, integration tests (26/26 pass)
-- [x] **Phase 3** — web app wired to the API (3D scene, dashboard, transactions)
-- [x] **Phase 4** — better-auth sign-in/sessions, server-side roles (OWNER/ADMIN/STAFF/VIEWER), workspace membership checks, filtered reports + CSV export, grouped low-stock notifications
-- [x] **Phase 5** — a11y pass (axe in CI), Playwright E2E smoke test, rate limiting, screenshots, [VPS deployment guide](docs/deployment-vps.md)
+- [x] Phase 0 — monorepo, tooling, Docker, CI
+- [x] Phase 1 — UI shell + 3D prototype
+- [x] Phase 2 — Fastify API + PostgreSQL/Prisma, transactional movements
+- [x] Phase 3 — web wired to live data
+- [x] Phase 4 — better-auth, server-side roles, reports + CSV, notifications
+- [x] Phase 5 — a11y pass, E2E smoke + axe, rate limiting, VPS guide
+- [x] Post-MVP polish — bilingual ID/EN, onboarding tour, delivery animation
+
+**Ideas beyond the MVP:** workspace-member management UI, admin product CRUD
+UI, multi-warehouse layouts, report pagination, barcode scanning.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports follow
-[SECURITY.md](SECURITY.md) — please do not open public issues for
-vulnerabilities.
+See [CONTRIBUTING.md](CONTRIBUTING.md). UI strings go through the i18n catalog
+(`apps/web/src/i18n`) — add the English entry when introducing new copy.
+Security reports follow [SECURITY.md](SECURITY.md).
 
 ## License
 
 [MIT](LICENSE) © StockSpace contributors. Third-party assets: icons by
-[lucide](https://lucide.dev) (ISC), font _Plus Jakarta Sans_ (SIL OFL 1.1,
-served via Fontsource). All 3D geometry is procedural/original.
+[lucide](https://lucide.dev) (ISC), font _Plus Jakarta Sans_ (SIL OFL 1.1 via
+Fontsource). All 3D geometry is procedural/original.

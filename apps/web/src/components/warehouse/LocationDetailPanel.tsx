@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { MOVEMENT_TYPE_LABEL } from '@/lib/movement-meta'
 import { Card } from '@/components/ui/Card'
 import { formatNumber, formatRelativeTime } from '@/lib/format'
+import { useI18n } from '@/i18n'
 
 const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
   IN: PackagePlus,
@@ -56,6 +57,7 @@ export function LocationDetailPanel({
   onClose,
   className = '',
 }: LocationDetailPanelProps) {
+  const { t } = useI18n()
   const inventoryQuery = useLocationInventory(locationId)
   const movementsQuery = useMovements(locationId ? { locationId, perPage: 60 } : {})
 
@@ -63,12 +65,14 @@ export function LocationDetailPanel({
     return (
       <Card className={`flex flex-col ${className}`}>
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h2 className="text-sm font-bold text-ink">Detail Lokasi</h2>
+          <h2 className="text-sm font-bold text-ink">{t('Detail Lokasi')}</h2>
         </div>
         <EmptyState
           icon={Warehouse}
-          title="Belum ada lokasi dipilih"
-          description="Klik rak atau area pada scene 3D, atau buka daftar lokasi, untuk melihat detail dan barang yang tersimpan di dalamnya."
+          title={t('Belum ada lokasi dipilih')}
+          description={t(
+            'Klik rak atau area pada scene 3D, atau buka daftar lokasi, untuk melihat detail dan barang yang tersimpan di dalamnya.'
+          )}
           className="flex-1"
         />
       </Card>
@@ -88,12 +92,12 @@ export function LocationDetailPanel({
     <Card className={`flex flex-col ${className}`}>
       <div className="flex items-center justify-between border-b border-line px-5 py-4">
         <h2 className="text-sm font-bold text-ink">
-          {location?.type === 'RACK' ? 'Detail Rak' : 'Detail Area'}
+          {location?.type === 'RACK' ? t('Detail Rak') : t('Detail Area')}
         </h2>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Tutup panel detail"
+          aria-label={t('Tutup panel detail')}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink"
         >
           <X aria-hidden className="h-4 w-4" />
@@ -103,11 +107,11 @@ export function LocationDetailPanel({
       <div className="flex-1 overflow-y-auto scroll-slim">
         {inventoryQuery.isLoading ? (
           <p className="px-5 py-8 text-center text-sm font-semibold text-muted">
-            Memuat detail lokasi…
+            {t('Memuat detail lokasi…')}
           </p>
         ) : inventoryQuery.error ? (
           <div className="px-5 py-8 text-center">
-            <p className="text-sm font-bold text-ink">Gagal memuat detail</p>
+            <p className="text-sm font-bold text-ink">{t('Gagal memuat detail')}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
               {inventoryQuery.error.message}
             </p>
@@ -116,7 +120,7 @@ export function LocationDetailPanel({
               onClick={() => void inventoryQuery.refetch()}
               className="mt-3 rounded-control bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary-hover"
             >
-              Coba lagi
+              {t('Coba lagi')}
             </button>
           </div>
         ) : !location ? null : (
@@ -133,34 +137,37 @@ export function LocationDetailPanel({
 
               <dl className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-control bg-canvas px-3 py-2.5">
-                  <dt className="text-[11px] font-semibold text-muted">Total Unit</dt>
+                  <dt className="text-[11px] font-semibold text-muted">{t('Total Unit')}</dt>
                   <dd className="text-sm font-bold text-ink">{formatNumber(totalQuantity)}</dd>
                 </div>
                 <div className="rounded-control bg-canvas px-3 py-2.5">
-                  <dt className="text-[11px] font-semibold text-muted">Kapasitas</dt>
+                  <dt className="text-[11px] font-semibold text-muted">{t('Kapasitas')}</dt>
                   <dd className="text-sm font-bold text-ink">
                     {location.capacity ? formatNumber(location.capacity) : '—'}
                   </dd>
                 </div>
                 <div className="rounded-control bg-canvas px-3 py-2.5">
-                  <dt className="text-[11px] font-semibold text-muted">Jenis Produk</dt>
+                  <dt className="text-[11px] font-semibold text-muted">{t('Jenis Produk')}</dt>
                   <dd className="text-sm font-bold text-ink">{lines.length}</dd>
                 </div>
                 <div className="rounded-control bg-canvas px-3 py-2.5">
-                  <dt className="text-[11px] font-semibold text-muted">Tingkat</dt>
+                  <dt className="text-[11px] font-semibold text-muted">{t('Tingkat')}</dt>
                   <dd className="text-sm font-bold text-ink">
-                    {location.type === 'RACK' ? `${location.levels} level` : '—'}
+                    {location.type === 'RACK'
+                      ? `${location.levels} ${t('Tingkat').toLowerCase()}`
+                      : '—'}
                   </dd>
                 </div>
               </dl>
             </div>
 
             <div className="mt-5 border-t border-line px-5 pt-4">
-              <h4 className="text-sm font-bold text-ink">Daftar Barang</h4>
+              <h4 className="text-sm font-bold text-ink">{t('Daftar Barang')}</h4>
               {lines.length === 0 ? (
                 <p className="py-4 text-xs leading-relaxed text-muted">
-                  Belum ada barang di lokasi ini. Barang yang ditempatkan di sini akan tampil
-                  otomatis.
+                  {t(
+                    'Belum ada barang di lokasi ini. Barang yang ditempatkan di sini akan tampil otomatis.'
+                  )}
                 </p>
               ) : (
                 <ul className="mt-1 divide-y divide-line/70">
@@ -208,12 +215,12 @@ export function LocationDetailPanel({
             </div>
 
             <div className="mt-4 border-t border-line px-5 pt-4 pb-5">
-              <h4 className="text-sm font-bold text-ink">Riwayat Pergerakan</h4>
+              <h4 className="text-sm font-bold text-ink">{t('Riwayat Pergerakan')}</h4>
               {movementsQuery.isLoading ? (
-                <p className="py-4 text-xs font-semibold text-muted">Memuat riwayat…</p>
+                <p className="py-4 text-xs font-semibold text-muted">{t('Memuat riwayat…')}</p>
               ) : movements.length === 0 ? (
                 <p className="py-4 text-xs leading-relaxed text-muted">
-                  Belum ada pergerakan tercatat di lokasi ini.
+                  {t('Belum ada pergerakan tercatat di lokasi ini.')}
                 </p>
               ) : (
                 <ul className="mt-2 flex flex-col gap-3">
@@ -234,7 +241,7 @@ export function LocationDetailPanel({
                             </span>
                           </p>
                           <p className="mt-0.5 text-xs text-muted">
-                            {MOVEMENT_TYPE_LABEL[movement.type]} ·{' '}
+                            {t(MOVEMENT_TYPE_LABEL[movement.type])} ·{' '}
                             {formatRelativeTime(movement.createdAt)} · {movement.actor.name}
                           </p>
                         </div>
@@ -248,13 +255,13 @@ export function LocationDetailPanel({
                   to={`/inventory?loc=${location.code}`}
                   className="text-center text-xs font-bold text-primary hover:underline"
                 >
-                  Lihat semua barang di lokasi ini →
+                  {t('Lihat semua barang di lokasi ini →')}
                 </Link>
                 <Link
                   to={`/transactions?loc=${location.code}`}
                   className="text-center text-xs font-semibold text-muted hover:text-primary hover:underline"
                 >
-                  Riwayat lengkap ({formatNumber(movements.length)}) →
+                  {t('Riwayat lengkap')} ({formatNumber(movements.length)}) →
                 </Link>
               </div>
             </div>
