@@ -7,27 +7,32 @@ import { E2E_DATABASE_URL } from '../playwright.config'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 
 /**
- * Prepares the dedicated e2e database: apply migrations, then load the
- * fictional demo workspace (users + warehouse + stock) so the smoke test has a
+ * Prepares the dedicated e2e database: create it if missing, apply
+ * migrations, then load the fictional demo workspace so the smoke test has a
  * deterministic starting point.
  */
 export default async function globalSetup() {
-  // Defensively create the database when the docker volume predates the init
-  // script that creates it.
-  const admin = new (await import('@prisma/client')).PrismaClient({
-    datasources: { db: { url: E2E_DATABASE_URL } },
-  })
+  const databaseName = new URL(E2E_DATABASE_URL).pathname.slice(1)
+
   try {
-    await admin.$executeRawUnsafe('SELECT 1')
-    await admin.$disconnect()
-  } catch {
-    const serverUrl = E2E_DATABASE_URL.replace(/\/[^/]+$/, '/postgres')
-    const bootstrap = new (await import('@prisma/client')).PrismaClient({
-      datasources: { db: { url: serverUrl } },
+    const probe = new (await import('@prisma/client')).PrismaClient({
+      datasources: { db: { url: E2E_DATABASE_URL } },
     })
-    const dbName = new URL('http://x' + E2E_DATABASE_URL.replace(/^[a-z]+:/, '')).pathname.slice(1)
-    await bootstrap.$executeRawUnsafe(`CREATE DATABASE "${dbName}"`)
-    await bootstrap.$disconnect()
+    await probe.$executeRawUnsafe('SELECT 1')
+    await probe.$disconnect()
+  } catch {
+    const adminUrl = new URL(E2E_DATABASE_URL)
+    adminUrl.pathname = '/postgres'
+    const bootstrap = new (await import('@prisma/client')).PrismaClient({
+      datasources: { db: { url: adminUrl.toString() } },
+    })
+    try {
+      await bootstrap.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`)
+    } catch (error) {
+      if (!String(error).includes('42P04')) throw error
+    } finally {
+      await bootstrap.$disconnect().catch(() => {})
+    }
   }
 
   const env = {

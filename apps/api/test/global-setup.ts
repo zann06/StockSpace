@@ -10,22 +10,31 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 
 /**
  * Global test setup:
- * 1. defensively create the test database (in case the docker volume predates
- *    the init script that creates it),
+ * 1. defensively create the test database (in case the server predates the
+ *    init script that creates it),
  * 2. apply all Prisma migrations to it.
  */
 export default async function globalSetup() {
-  const admin = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } })
+  const target = new URL(TEST_DATABASE_URL)
+  const databaseName = target.pathname.slice(1)
+
   try {
-    await admin.$executeRawUnsafe('SELECT 1')
+    const probe = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } })
+    await probe.$executeRawUnsafe('SELECT 1')
+    await probe.$disconnect()
   } catch {
     // Database missing — create it through the admin (postgres) database.
-    const serverUrl = TEST_DATABASE_URL.replace(/\/[^/]+$/, '/postgres')
-    const bootstrap = new PrismaClient({ datasources: { db: { url: serverUrl } } })
-    await bootstrap.$executeRawUnsafe(`CREATE DATABASE "${new URL(serverUrl).pathname.slice(1)}"`)
-    await bootstrap.$disconnect()
-  } finally {
-    await admin.$disconnect().catch(() => {})
+    const adminUrl = new URL(TEST_DATABASE_URL)
+    adminUrl.pathname = '/postgres'
+    const bootstrap = new PrismaClient({ datasources: { db: { url: adminUrl.toString() } } })
+    try {
+      await bootstrap.$executeRawUnsafe(`CREATE DATABASE "${databaseName}"`)
+    } catch (error) {
+      // 42P04 = duplicate_database — a concurrent run already created it.
+      if (!String(error).includes('42P04')) throw error
+    } finally {
+      await bootstrap.$disconnect().catch(() => {})
+    }
   }
 
   execSync('npx prisma migrate deploy', {

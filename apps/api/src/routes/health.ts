@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify'
 
-import { prisma } from '../lib/prisma.js'
-
+/**
+ * Liveness probe only — intentionally does NOT touch the database so process
+ * orchestration (docker healthcheck, Playwright webServer readiness) cannot
+ * deadlock while a migration/seeding step is still creating the database.
+ */
 export async function healthRoutes(app: FastifyInstance) {
-  app.get('/api/health', async () => {
-    await prisma.$queryRaw`SELECT 1`
-    return { status: 'ok' }
-  })
+  app.get('/api/health', async () => ({ status: 'ok' }))
 }
