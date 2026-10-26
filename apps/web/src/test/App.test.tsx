@@ -95,6 +95,37 @@ describe('App shell routing (live API data flow)', () => {
     await waitFor(() => expect(screen.queryByText('Kertas HVS A4 80gsm')).not.toBeInTheDocument())
   })
 
+  it('lists workspace members and invites an existing account from settings', async () => {
+    const user = userEvent.setup()
+    window.history.pushState({}, '', '/settings')
+    render(<App />)
+
+    expect(await screen.findByText('dewi@technusa.example')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Undang Pengguna/ }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'Email pengguna terdaftar' }),
+      'sari@technusa.example'
+    )
+    await user.click(screen.getByRole('button', { name: 'Kirim undangan' }))
+
+    expect(await screen.findByText(/berhasil diundang/)).toBeInTheDocument()
+    expect(screen.getByText('sari@technusa.example')).toBeInTheDocument()
+  })
+
+  it('creates a product from the inventory form as an admin', async () => {
+    const user = userEvent.setup()
+    window.history.pushState({}, '', '/inventory/products/new')
+    render(<App />)
+
+    await user.type(await screen.findByRole('textbox', { name: 'SKU' }), 'SKU-BARU-01')
+    await user.type(screen.getByRole('textbox', { name: 'Nama produk' }), 'Produk Cipta Uji')
+    await user.click(screen.getByRole('button', { name: 'Buat Produk' }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Produk Cipta Uji' })
+    ).toBeInTheDocument()
+  })
+
   it('shows the stock-in form and records a movement through the API', async () => {
     const user = userEvent.setup()
     window.history.pushState({}, '', '/transactions/stock-in')

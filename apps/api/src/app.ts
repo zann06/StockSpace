@@ -12,6 +12,7 @@ import { prisma } from './lib/prisma.js'
 import { requireSession, resolveWorkspace } from './lib/session.js'
 import { dashboardRoutes } from './routes/dashboard.js'
 import { healthRoutes } from './routes/health.js'
+import { memberRoutes } from './routes/members.js'
 import { movementRoutes } from './routes/movements.js'
 import { notificationRoutes } from './routes/notifications.js'
 import { productRoutes } from './routes/products.js'
@@ -131,6 +132,7 @@ export async function buildApp(options: { rateLimit?: boolean } = {}): Promise<F
     scoped.addHook('preHandler', resolveWorkspace)
     await scoped.register(dashboardRoutes)
     await scoped.register(productRoutes)
+    await scoped.register(memberRoutes)
     await scoped.register(categoryRoutes)
     await scoped.register(warehouseRoutes)
     await scoped.register(locationRoutes)

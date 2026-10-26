@@ -388,6 +388,33 @@ describe('products API', () => {
     expect(duplicate.json().error.code).toBe('SKU_TAKEN')
   })
 
+  it('updates a product as admin, keeps the SKU immutable, and forbids staff', async () => {
+    const updated = await call(
+      testApp.app,
+      fixtures.owner,
+      'PATCH',
+      `/api/products/${fixtures.product.id}`,
+      { name: 'Produk Uji Diperbarui', costPrice: 25_000, reorderThreshold: 10, active: false },
+      fixtures.workspaceId
+    )
+    expect(updated.statusCode).toBe(200)
+    expect(updated.json().data.name).toBe('Produk Uji Diperbarui')
+    expect(updated.json().data.costPrice).toBe(25_000)
+    expect(updated.json().data.active).toBe(false)
+    expect(updated.json().data.sku).toBe(fixtures.product.sku)
+
+    const forbidden = await call(
+      testApp.app,
+      fixtures.staff,
+      'PATCH',
+      `/api/products/${fixtures.product.id}`,
+      { name: 'Tidak Boleh' },
+      fixtures.workspaceId
+    )
+    expect(forbidden.statusCode).toBe(403)
+    expect(forbidden.json().error.code).toBe('ROLE_FORBIDDEN')
+  })
+
   it('lists products with on-hand totals and search', async () => {
     await seedBalance(fixtures.product.id, fixtures.rackA.id, 1, 42)
     const all = await call(
@@ -424,6 +451,185 @@ describe('products API', () => {
     expect(hit.json().pagination.total).toBe(1)
   })
 })
+
+describe('workspace members API', () => {
+  it('lists members for any member and exposes name, email and role', async () => {
+    const response = await call(
+      testApp.app,
+      fixtures.viewer,
+      'GET',
+      '/api/members',
+      undefined,
+      fixtures.workspaceId
+    )
+    expect(response.statusCode).toBe(200)
+    const members = response.json().data as {
+      userId: string
+      role: string
+      name: string
+      email: string
+    }[]
+    expect(members).toHaveLength(3)
+    expect(members.find((member) => member.userId === fixtures.owner.id)?.role).toBe('OWNER')
+    expect(members.find((member) => member.userId === fixtures.owner.id)?.email).toBe(
+      fixtures.owner.email
+    )
+  })
+
+  it('invites an existing account by email (owner) and rejects duplicates', async () => {
+    const invited = await call(
+      testApp.app,
+      fixtures.owner,
+      'POST',
+      '/api/members',
+      { email: fixtures.outsider.email.toUpperCase(), role: 'STAFF' },
+      fixtures.workspaceId
+    )
+    expect(invited.statusCode).toBe(200)
+    expect(invited.json().data.email).toBe(fixtures.outsider.email)
+
+    const duplicate = await call(
+      testApp.app,
+      fixtures.owner,
+      'POST',
+      '/api/members',
+      { email: fixtures.outsider.email, role: 'VIEWER' },
+      fixtures.workspaceId
+    )
+    expect(duplicate.statusCode).toBe(409)
+    expect(duplicate.json().error.code).toBe('MEMBER_EXISTS')
+  })
+
+  it('returns a helpful error for emails without an account', async () => {
+    const response = await call(
+      testApp.app,
+      fixtures.owner,
+      'POST',
+      '/api/members',
+      { email: 'belum-terdaftar@test.local', role: 'STAFF' },
+      fixtures.workspaceId
+    )
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error.code).toBe('USER_NOT_FOUND')
+  })
+
+  it('forbids staff/viewer from inviting and admins from granting OWNER', async () => {
+    const staff = await call(
+      testApp.app,
+      fixtures.staff,
+      'POST',
+      '/api/members',
+      { email: fixtures.outsider.email, role: 'VIEWER' },
+      fixtures.workspaceId
+    )
+    expect(staff.statusCode).toBe(403)
+    expect(staff.json().error.code).toBe('ROLE_FORBIDDEN')
+
+    await prisma.workspaceMember.updateMany({
+      where: { workspaceId: fixtures.workspaceId, userId: fixtures.staff.id },
+      data: { role: 'ADMIN' },
+    })
+    const admin = await call(
+      testApp.app,
+      fixtures.staff,
+      'POST',
+      '/api/members',
+      { email: fixtures.outsider.email, role: 'OWNER' },
+      fixtures.workspaceId
+    )
+    expect(admin.statusCode).toBe(403)
+    expect(admin.json().error.code).toBe('ROLE_FORBIDDEN')
+  })
+
+  it('changes a role, rejects self-changes, and respects the hierarchy', async () => {
+    const updated = await call(
+      testApp.app,
+      fixtures.owner,
+      'PATCH',
+      `/api/members/${await memberIdFor(fixtures.workspaceId, fixtures.staff.id)}`,
+      { role: 'ADMIN' },
+      fixtures.workspaceId
+    )
+    expect(updated.statusCode).toBe(200)
+    expect(updated.json().data.role).toBe('ADMIN')
+
+    const own = await call(
+      testApp.app,
+      fixtures.owner,
+      'PATCH',
+      `/api/members/${await memberIdFor(fixtures.workspaceId, fixtures.owner.id)}`,
+      { role: 'ADMIN' },
+      fixtures.workspaceId
+    )
+    expect(own.statusCode).toBe(400)
+    expect(own.json().error.code).toBe('SELF_ROLE_CHANGE')
+
+    const demoteOwner = await call(
+      testApp.app,
+      fixtures.staff,
+      'PATCH',
+      `/api/members/${await memberIdFor(fixtures.workspaceId, fixtures.owner.id)}`,
+      { role: 'VIEWER' },
+      fixtures.workspaceId
+    )
+    expect(demoteOwner.statusCode).toBe(403)
+    expect(demoteOwner.json().error.code).toBe('ROLE_FORBIDDEN')
+  })
+
+  it('removes a member but not yourself', async () => {
+    await call(
+      testApp.app,
+      fixtures.owner,
+      'POST',
+      '/api/members',
+      { email: fixtures.outsider.email, role: 'STAFF' },
+      fixtures.workspaceId
+    )
+    const outsiderMemberId = await memberIdFor(fixtures.workspaceId, fixtures.outsider.id)
+
+    const removed = await call(
+      testApp.app,
+      fixtures.owner,
+      'DELETE',
+      `/api/members/${outsiderMemberId}`,
+      undefined,
+      fixtures.workspaceId
+    )
+    expect(removed.statusCode).toBe(200)
+
+    const self = await call(
+      testApp.app,
+      fixtures.owner,
+      'DELETE',
+      `/api/members/${await memberIdFor(fixtures.workspaceId, fixtures.owner.id)}`,
+      undefined,
+      fixtures.workspaceId
+    )
+    expect(self.statusCode).toBe(400)
+    expect(self.json().error.code).toBe('SELF_REMOVE')
+  })
+
+  it('scopes members to the active workspace', async () => {
+    const response = await call(
+      testApp.app,
+      fixtures.outsider,
+      'GET',
+      '/api/members',
+      undefined,
+      fixtures.workspaceId
+    )
+    expect(response.statusCode).toBe(403)
+    expect(response.json().error.code).toBe('NOT_A_MEMBER')
+  })
+})
+
+async function memberIdFor(workspaceId: string, userId: string): Promise<string> {
+  const member = await prisma.workspaceMember.findUniqueOrThrow({
+    where: { workspaceId_userId: { workspaceId, userId } },
+    select: { id: true },
+  })
+  return member.id
+}
 
 describe('warehouse layout & location inventory (3D data source)', () => {
   it('includes balances and products in the warehouse layout', async () => {

@@ -8,12 +8,16 @@ import { useWorkspace } from './workspace-context'
 import type {
   ApiCategory,
   ApiLocationInventory,
+  ApiMember,
   ApiMovement,
   ApiNotification,
   ApiProduct,
   ApiWarehouseLayout,
   DashboardSummary,
+  MemberRole,
   MovementPayload,
+  ProductInput,
+  ProductUpdateInput,
   WorkspaceSummary,
 } from './types'
 import type { Balance, SceneProduct, StorageLocation, Warehouse } from '@/types'
@@ -170,6 +174,113 @@ export function useCategories() {
   })
 }
 
+function invalidateProductData(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ['products'] })
+  void queryClient.invalidateQueries({ queryKey: ['product'] })
+  void queryClient.invalidateQueries({ queryKey: ['categories'] })
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  void queryClient.invalidateQueries({ queryKey: ['layout'] })
+  void queryClient.invalidateQueries({ queryKey: ['location-inventory'] })
+  void queryClient.invalidateQueries({ queryKey: ['report-low-stock'] })
+  void queryClient.invalidateQueries({ queryKey: ['report-movements'] })
+  void queryClient.invalidateQueries({ queryKey: ['notifications'] })
+}
+
+/** Creates a product (ADMIN+); SKU is unique per workspace. */
+export function useCreateProduct() {
+  const queryClient = useQueryClient()
+  const workspaceId = useWorkspaceId()
+  return useMutation({
+    mutationFn: (input: ProductInput) =>
+      apiFetch<{ data: ApiProduct }>('/api/products', {
+        method: 'POST',
+        body: input,
+        workspaceId,
+      }),
+    onSuccess: () => invalidateProductData(queryClient),
+  })
+}
+
+/** Updates a product (ADMIN+); SKU is immutable server-side. */
+export function useUpdateProduct() {
+  const queryClient = useQueryClient()
+  const workspaceId = useWorkspaceId()
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ProductUpdateInput }) =>
+      apiFetch<{ data: ApiProduct }>(`/api/products/${id}`, {
+        method: 'PATCH',
+        body: input,
+        workspaceId,
+      }),
+    onSuccess: () => invalidateProductData(queryClient),
+  })
+}
+
+export function useMembers() {
+  const workspaceId = useWorkspaceId()
+  return useQuery({
+    queryKey: ['members', workspaceId],
+    queryFn: () => apiFetch<{ data: ApiMember[] }>('/api/members', { workspaceId }),
+    enabled: workspaceId !== '',
+  })
+}
+
+export interface InviteMemberInput {
+  email: string
+  role: MemberRole
+}
+
+/** Invites an existing account; there is no mail provider, so the user must
+ * already have signed up with that email. */
+export function useInviteMember() {
+  const queryClient = useQueryClient()
+  const workspaceId = useWorkspaceId()
+  return useMutation({
+    mutationFn: (input: InviteMemberInput) =>
+      apiFetch<{ data: ApiMember }>('/api/members', {
+        method: 'POST',
+        body: input,
+        workspaceId,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['members'] })
+    },
+  })
+}
+
+export function useUpdateMemberRole() {
+  const queryClient = useQueryClient()
+  const workspaceId = useWorkspaceId()
+  return useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role: MemberRole }) =>
+      apiFetch<{ data: ApiMember }>(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        body: { role },
+        workspaceId,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['members'] })
+      // The signed-in user's own role is read from /api/workspaces.
+      void queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+    },
+  })
+}
+
+export function useRemoveMember() {
+  const queryClient = useQueryClient()
+  const workspaceId = useWorkspaceId()
+  return useMutation({
+    mutationFn: (memberId: string) =>
+      apiFetch<{ data: { id: string } }>(`/api/members/${memberId}`, {
+        method: 'DELETE',
+        workspaceId,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['members'] })
+    },
+  })
+}
+
 export interface MovementListParams {
   type?: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
   productId?: string
@@ -262,11 +373,15 @@ export interface MovementReportParams {
   to?: string
   type?: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
   productId?: string
+  page?: number
+  perPage?: number
 }
 
 export function useMovementReport(params: MovementReportParams) {
   const workspaceId = useWorkspaceId()
-  const query = new URLSearchParams()
+  const page = params.page ?? 1
+  const perPage = params.perPage ?? 50
+  const query = new URLSearchParams({ page: String(page), perPage: String(perPage) })
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
   if (params.type) query.set('type', params.type)
@@ -280,6 +395,8 @@ export function useMovementReport(params: MovementReportParams) {
       params.to ?? '',
       params.type ?? '',
       params.productId ?? '',
+      page,
+      perPage,
     ],
     queryFn: () =>
       apiFetch<{
@@ -287,7 +404,7 @@ export function useMovementReport(params: MovementReportParams) {
           sourceLocation: { code: string } | null
           destinationLocation: { code: string } | null
         })[]
-        pagination: { total: number }
+        pagination: { page: number; perPage: number; total: number }
       }>(`/api/reports/movements?${query}`),
     enabled: workspaceId !== '',
   })

@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { apiFetch } from './client'
+import { apiFetch, setCurrentWorkspaceId } from './client'
 import { WorkspaceContext } from './workspace-context'
 import type { WorkspaceSummary } from './types'
 
@@ -41,6 +41,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // storage unavailable (private mode) — selection lives in memory only
     }
   }
+
+  // Keep the workspace header in sync for hooks that don't pass it explicitly.
+  useEffect(() => {
+    setCurrentWorkspaceId(workspace?.id ?? null)
+  }, [workspace?.id])
 
   const value = useMemo<import('./workspace-context').WorkspaceContextValue>(
     () => ({

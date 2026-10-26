@@ -98,3 +98,24 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] 3D delivery animation when a stock movement is committed (reduced-motion aware)
 - [x] Demo GIF for the README, captured end-to-end via Playwright + ffmpeg
 - [x] Emoji removed from the UI for a cleaner look
+
+## Post-MVP features ✅
+
+- [x] Workspace member management (PRD §7.8): list members, invite an existing
+      account by email, change roles, remove members — with OWNER/ADMIN guards,
+      no self-demotion, and last-Owner protection. Mirrored statefully in the
+      demo API.
+- [x] Admin product CRUD: create/edit form (category, unit, barcode, pricing,
+      reorder threshold, active toggle) gated to ADMIN+, with an immutable SKU
+      and duplicate-SKU handling. Demo API parity included.
+- [x] Movement report pagination: 50 rows per page with previous/next controls,
+      page reset on filter changes, and demo API parity.
+
+### Known limitations
+
+- Invitations require the user to already have an account: there is no mail
+  provider, so a pending-invite flow would need a new `WorkspaceInvite` model
+  (token + expiry + delivery). The API returns `USER_NOT_FOUND` with guidance
+  instead of silently failing.
+- Products are archived through the `active` toggle; there is no hard DELETE
+  endpoint, preserving movement history.

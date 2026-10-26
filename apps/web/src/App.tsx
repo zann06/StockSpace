@@ -19,6 +19,7 @@ import { InventoryPage } from '@/pages/InventoryPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProductDetailPage } from '@/pages/ProductDetailPage'
+import { ProductFormPage } from '@/pages/ProductFormPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TransactionsPage } from '@/pages/TransactionsPage'
@@ -103,11 +104,9 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/warehouse" element={<WarehousePage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
-                <Route
-                  path="/inventory/products/new"
-                  element={<Navigate to="/inventory" replace />}
-                />
+                <Route path="/inventory/products/new" element={<ProductFormPage />} />
                 <Route path="/inventory/products/:id" element={<ProductDetailPage />} />
+                <Route path="/inventory/products/:id/edit" element={<ProductFormPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route
                   path="/transactions/stock-in"

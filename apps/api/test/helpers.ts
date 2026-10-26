@@ -189,7 +189,7 @@ export async function truncateAll() {
 export function call(
   app: FastifyInstance,
   user: { cookie: string },
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   url: string,
   payload?: unknown,
   workspaceId?: string
@@ -198,7 +198,7 @@ export function call(
     method,
     url,
     headers: {
-      'content-type': 'application/json',
+      ...(payload !== undefined ? { 'content-type': 'application/json' } : {}),
       cookie: user.cookie,
       ...(workspaceId ? { 'x-workspace-id': workspaceId } : {}),
     },

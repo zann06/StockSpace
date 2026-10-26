@@ -15,6 +15,8 @@
  */
 
 import type { MovementType } from '@/types'
+import type { MemberRole } from './types'
+import { roleAtLeast } from '@/lib/roles'
 import {
   inventoryValue as calcInventoryValue,
   lowStockProducts,
@@ -27,22 +29,35 @@ import {
   balances as mockBalances,
   buildMovements,
   locations,
-  products as mockProducts,
+  products as seedProducts,
   warehouse,
 } from '@/mocks/warehouse-data'
 
 const DEMO_PASSWORD = 'stockspace-demo'
 
-const DEMO_ACCOUNTS: Record<string, { name: string; role: 'OWNER' | 'STAFF' | 'VIEWER' }> = {
+const DEMO_ACCOUNTS: Record<string, { name: string; role: MemberRole }> = {
   'farid@technusa.example': { name: 'Farid Rizky', role: 'OWNER' },
   'dewi@technusa.example': { name: 'Dewi Lestari', role: 'STAFF' },
   'budi@technusa.example': { name: 'Budi Santoso', role: 'STAFF' },
   'viewer@technusa.example': { name: 'Nadia Viewer', role: 'VIEWER' },
+  // Registered accounts that are not workspace members yet — they make the
+  // invite flow demonstrable in the static build.
+  'admin@technusa.example': { name: 'Andi Pratama', role: 'ADMIN' },
+  'sari@technusa.example': { name: 'Sari Wulandari', role: 'STAFF' },
 }
 
 interface DemoSession {
   user: { id: string; name: string; email: string; emailVerified: boolean; image: null }
-  role: 'OWNER' | 'STAFF' | 'VIEWER'
+  role: MemberRole
+}
+
+interface DemoMember {
+  id: string
+  userId: string
+  name: string
+  email: string
+  role: MemberRole
+  createdAt: string
 }
 
 interface DemoNotification {
@@ -56,6 +71,8 @@ interface DemoNotification {
 
 interface DemoState {
   session: DemoSession | null
+  members: DemoMember[]
+  products: typeof seedProducts
   balances: typeof mockBalances
   movements: ReturnType<typeof buildMovements>
   notifications: DemoNotification[]
@@ -64,13 +81,34 @@ interface DemoState {
 
 let state: DemoState
 
+function demoUserId(email: string): string {
+  return `user-${email.split('@')[0]}`
+}
+
+function initialMembers(): DemoMember[] {
+  const createdAt = new Date().toISOString()
+  return [
+    'farid@technusa.example',
+    'dewi@technusa.example',
+    'budi@technusa.example',
+    'viewer@technusa.example',
+  ].map((email, index) => ({
+    id: `member-${index + 1}`,
+    userId: demoUserId(email),
+    name: DEMO_ACCOUNTS[email]!.name,
+    email,
+    role: DEMO_ACCOUNTS[email]!.role,
+    createdAt,
+  }))
+}
+
 function resetDemoState(options: { signedIn?: boolean } = {}) {
   const now = new Date()
   state = {
     session: options.signedIn
       ? {
           user: {
-            id: 'user-1',
+            id: 'user-dewi',
             name: 'Dewi Lestari',
             email: 'dewi@technusa.example',
             emailVerified: true,
@@ -79,6 +117,8 @@ function resetDemoState(options: { signedIn?: boolean } = {}) {
           role: 'STAFF',
         }
       : null,
+    members: initialMembers(),
+    products: seedProducts.map((product) => ({ ...product })),
     balances: mockBalances.map((balance) => ({ ...balance })),
     movements: buildMovements(now),
     notifications: [],
@@ -112,7 +152,7 @@ const zoneIds = new Map(
   ])
 )
 const categoryIds = new Map(
-  [...new Set(mockProducts.map((product) => product.category))].map((name, index) => [
+  [...new Set(seedProducts.map((product) => product.category))].map((name, index) => [
     name,
     `cat-${index}`,
   ])
@@ -121,11 +161,16 @@ const categoryIds = new Map(
 function apiProducts() {
   const quantities = quantityByProduct(state.balances)
   const nowISO = new Date().toISOString()
-  return mockProducts.map((product) => ({
+  return state.products.map((product) => ({
     id: product.id,
     sku: product.sku,
     name: product.name,
-    category: { id: categoryIds.get(product.category)!, name: product.category },
+    category: product.category
+      ? {
+          id: categoryIds.get(product.category) ?? `cat-${product.category}`,
+          name: product.category,
+        }
+      : null,
     unit: product.unit,
     barcode: product.barcode,
     costPrice: product.costPrice,
@@ -141,9 +186,12 @@ function apiProducts() {
 function apiMovements() {
   return state.movements.map((movement) => ({
     ...movement,
-    product:
-      mockProducts.find((candidate) => candidate.id === movement.productId) ??
-      { id: movement.productId, sku: '—', name: 'Produk tidak dikenal', unit: 'pcs' },
+    product: state.products.find((candidate) => candidate.id === movement.productId) ?? {
+      id: movement.productId,
+      sku: '—',
+      name: 'Produk tidak dikenal',
+      unit: 'pcs',
+    },
     actor: { id: 'user-1', name: movement.actor },
     sourceLocation: locations.find((location) => location.id === movement.sourceLocationId) ?? null,
     destinationLocation:
@@ -169,7 +217,7 @@ function applyBalance(productId: string, locationId: string, level: number, delt
 }
 
 function maybeAddLowStockNotification(productId: string) {
-  const product = mockProducts.find((candidate) => candidate.id === productId)
+  const product = state.products.find((candidate) => candidate.id === productId)
   if (!product) return
   const total = quantityByProduct(state.balances).get(productId) ?? 0
   if (total >= product.reorderThreshold) return
@@ -217,7 +265,7 @@ function handleMovement(
   const destinationLevel = Number(body.destinationLevel ?? 1)
   const note = (body.note as string | undefined)?.trim() ?? ''
 
-  const product = mockProducts.find((candidate) => candidate.id === productId)
+  const product = state.products.find((candidate) => candidate.id === productId)
   if (!product)
     return jsonResponse(
       { error: { code: 'PRODUCT_NOT_FOUND', message: 'Produk tidak ditemukan.' } },
@@ -392,17 +440,211 @@ export async function demoFetch(
         { error: { code: 'UNAUTHORIZED', message: 'Sesi tidak ditemukan.' } },
         401
       )
+    const membership = state.members.find((member) => member.userId === state.session!.user.id)
     return jsonResponse({
-      data: [
-        {
-          id: 'ws-1',
-          name: 'Toko TechNusa',
-          currency: 'IDR',
-          timezone: 'Asia/Jakarta',
-          role: state.session.role,
-        },
-      ],
+      data: membership
+        ? [
+            {
+              id: 'ws-1',
+              name: 'Toko TechNusa',
+              currency: 'IDR',
+              timezone: 'Asia/Jakarta',
+              role: membership.role,
+            },
+          ]
+        : [],
     })
+  }
+
+  // ---- workspace members ----
+  if (route === '/api/members' || route.startsWith('/api/members/')) {
+    if (!state.session) {
+      return jsonResponse(
+        { error: { code: 'UNAUTHORIZED', message: 'Sesi tidak ditemukan.' } },
+        401
+      )
+    }
+    const session = state.session
+    if (!state.members.some((member) => member.userId === session.user.id)) {
+      return jsonResponse(
+        { error: { code: 'NOT_A_MEMBER', message: 'Anda bukan anggota workspace ini.' } },
+        403
+      )
+    }
+    const canManage = roleAtLeast(session.role, 'ADMIN')
+
+    if (route === '/api/members' && method === 'GET') {
+      return jsonResponse({ data: state.members })
+    }
+
+    if (route === '/api/members' && method === 'POST') {
+      if (!canManage) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'ROLE_FORBIDDEN',
+              message: `Peran Anda (${session.role}) tidak berhak melakukan aksi ini (butuh ADMIN+).`,
+            },
+          },
+          403
+        )
+      }
+      const email = String(body.email ?? '')
+        .trim()
+        .toLowerCase()
+      const role = String(body.role ?? 'STAFF') as MemberRole
+      const account = DEMO_ACCOUNTS[email]
+      if (!account) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'USER_NOT_FOUND',
+              message: `Belum ada akun StockSpace dengan email "${email}". Minta pengguna mendaftar terlebih dahulu.`,
+            },
+          },
+          404
+        )
+      }
+      if (state.members.some((member) => member.email === email)) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'MEMBER_EXISTS',
+              message: 'Pengguna ini sudah menjadi anggota workspace.',
+            },
+          },
+          409
+        )
+      }
+      if (!roleAtLeast(session.role, role)) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'ROLE_FORBIDDEN',
+              message: `Peran Anda (${session.role}) tidak berhak mengundang anggota sebagai ${role}.`,
+            },
+          },
+          403
+        )
+      }
+      const member: DemoMember = {
+        id: `member-${++state.counter}-invited`,
+        userId: demoUserId(email),
+        name: account.name,
+        email,
+        role,
+        createdAt: new Date().toISOString(),
+      }
+      state.members.push(member)
+      return jsonResponse({ data: member })
+    }
+
+    const memberId = route.split('/api/members/')[1]
+    const member = state.members.find((candidate) => candidate.id === memberId)
+    if (!member) {
+      return jsonResponse(
+        { error: { code: 'MEMBER_NOT_FOUND', message: 'Anggota tidak ditemukan.' } },
+        404
+      )
+    }
+    if (!canManage) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'ROLE_FORBIDDEN',
+            message: `Peran Anda (${session.role}) tidak berhak melakukan aksi ini (butuh ADMIN+).`,
+          },
+        },
+        403
+      )
+    }
+    if (member.userId === session.user.id) {
+      return jsonResponse(
+        {
+          error: {
+            code: method === 'DELETE' ? 'SELF_REMOVE' : 'SELF_ROLE_CHANGE',
+            message:
+              method === 'DELETE'
+                ? 'Anda tidak dapat menghapus keanggotaan sendiri.'
+                : 'Anda tidak dapat mengubah peran sendiri. Minta Owner lain melakukannya.',
+          },
+        },
+        400
+      )
+    }
+    if (!roleAtLeast(session.role, member.role)) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'ROLE_FORBIDDEN',
+            message: `Peran Anda (${session.role}) tidak berhak mengelola anggota dengan peran ${member.role}.`,
+          },
+        },
+        403
+      )
+    }
+
+    if (method === 'DELETE') {
+      if (
+        member.role === 'OWNER' &&
+        !state.members.some((item) => item.role === 'OWNER' && item.id !== member.id)
+      ) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'LAST_OWNER',
+              message:
+                'Workspace harus memiliki minimal satu Owner. Angkat Owner lain terlebih dahulu.',
+            },
+          },
+          409
+        )
+      }
+      state.members = state.members.filter((item) => item.id !== member.id)
+      return jsonResponse({ data: { id: member.id } })
+    }
+
+    if (method === 'PATCH') {
+      const role = String(body.role ?? '') as MemberRole
+      if (!['OWNER', 'ADMIN', 'STAFF', 'VIEWER'].includes(role)) {
+        return jsonResponse(
+          {
+            error: { code: 'VALIDATION_FAILED', message: 'Data tidak valid — role tidak dikenal.' },
+          },
+          422
+        )
+      }
+      if (!roleAtLeast(session.role, role)) {
+        return jsonResponse(
+          {
+            error: {
+              code: 'ROLE_FORBIDDEN',
+              message: `Peran Anda (${session.role}) tidak berhak mengangkat anggota menjadi ${role}.`,
+            },
+          },
+          403
+        )
+      }
+      if (member.role === 'OWNER' && role !== 'OWNER') {
+        const otherOwner = state.members.some(
+          (item) => item.role === 'OWNER' && item.id !== member.id
+        )
+        if (!otherOwner) {
+          return jsonResponse(
+            {
+              error: {
+                code: 'LAST_OWNER',
+                message:
+                  'Workspace harus memiliki minimal satu Owner. Angkat Owner lain terlebih dahulu.',
+              },
+            },
+            409
+          )
+        }
+      }
+      member.role = role
+      return jsonResponse({ data: member })
+    }
   }
 
   // ---- warehouses / layout ----
@@ -424,7 +666,7 @@ export async function demoFetch(
           levels: 3,
         })),
         balances: state.balances,
-        products: mockProducts.map((product) => ({
+        products: state.products.map((product) => ({
           id: product.id,
           sku: product.sku,
           name: product.name,
@@ -443,15 +685,15 @@ export async function demoFetch(
   // ---- dashboard ----
   if (route === '/api/dashboard/summary') {
     const quantities = quantityByProduct(state.balances)
-    const low = lowStockProducts(mockProducts, state.balances)
-    const moved = [...mockProducts]
+    const low = lowStockProducts(state.products, state.balances)
+    const moved = [...state.products]
       .map((product) => ({ id: product.id, name: product.name, moved: product.totalMoved }))
       .sort((a, b) => b.moved - a.moved)
       .slice(0, 5)
     return jsonResponse({
       data: {
         totalUnits: totalUnitsOnHand(state.balances),
-        inventoryValue: calcInventoryValue(mockProducts, state.balances),
+        inventoryValue: calcInventoryValue(state.products, state.balances),
         lowStockCount: low.length,
         lowStock: low.slice(0, 8).map((product) => ({
           id: product.id,
@@ -467,8 +709,126 @@ export async function demoFetch(
   }
 
   // ---- products ----
-  if (route.startsWith('/api/products/')) {
-    const id = route.split('/api/products/')[1]
+  const productIdFromPath = route.startsWith('/api/products/')
+    ? route.split('/api/products/')[1]
+    : null
+  const canWriteProducts = !!state.session && roleAtLeast(state.session.role, 'ADMIN')
+
+  if (route === '/api/products' && method === 'POST') {
+    if (!canWriteProducts) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'ROLE_FORBIDDEN',
+            message: 'Peran Anda tidak berhak menambah produk (butuh ADMIN+).',
+          },
+        },
+        403
+      )
+    }
+    const sku = String(body.sku ?? '').trim()
+    const name = String(body.name ?? '').trim()
+    if (!sku || !name) {
+      return jsonResponse(
+        { error: { code: 'VALIDATION_FAILED', message: 'SKU dan nama produk wajib diisi.' } },
+        422
+      )
+    }
+    if (state.products.some((product) => product.sku === sku)) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'SKU_TAKEN',
+            message: `SKU "${sku}" sudah dipakai produk lain di workspace ini.`,
+          },
+        },
+        409
+      )
+    }
+    const categoryId = body.categoryId ? String(body.categoryId) : null
+    const categoryName = categoryId
+      ? [...categoryIds.entries()].find(([, id]) => id === categoryId)?.[0]
+      : ''
+    if (categoryId && !categoryName) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'PRODUCT_NOT_FOUND',
+            message: 'Kategori tidak ditemukan di workspace ini.',
+          },
+        },
+        404
+      )
+    }
+    const created = {
+      id: `p-demo-${++state.counter}`,
+      sku,
+      name,
+      category: categoryName ?? '',
+      unit: String(body.unit ?? 'pcs') || 'pcs',
+      barcode: body.barcode ? String(body.barcode) : null,
+      costPrice: Number(body.costPrice ?? 0),
+      reorderThreshold: Number(body.reorderThreshold ?? 0),
+      description: String(body.description ?? ''),
+      active: body.active !== false,
+      totalMoved: 0,
+    }
+    state.products.push(created)
+    return jsonResponse({ data: apiProducts().find((product) => product.id === created.id) })
+  }
+
+  if (productIdFromPath && method === 'PATCH') {
+    if (!canWriteProducts) {
+      return jsonResponse(
+        {
+          error: {
+            code: 'ROLE_FORBIDDEN',
+            message: 'Peran Anda tidak berhak mengubah produk (butuh ADMIN+).',
+          },
+        },
+        403
+      )
+    }
+    const product = state.products.find((candidate) => candidate.id === productIdFromPath)
+    if (!product) {
+      return jsonResponse(
+        { error: { code: 'PRODUCT_NOT_FOUND', message: 'Produk tidak ditemukan.' } },
+        404
+      )
+    }
+    if (body.name !== undefined) product.name = String(body.name).trim()
+    if (body.unit !== undefined) product.unit = String(body.unit)
+    if (body.barcode !== undefined) product.barcode = body.barcode ? String(body.barcode) : null
+    if (body.costPrice !== undefined) product.costPrice = Number(body.costPrice)
+    if (body.reorderThreshold !== undefined)
+      product.reorderThreshold = Number(body.reorderThreshold)
+    if (body.description !== undefined) product.description = String(body.description ?? '')
+    if (body.active !== undefined) product.active = body.active !== false
+    if (body.categoryId !== undefined) {
+      if (body.categoryId === null) {
+        product.category = ''
+      } else {
+        const categoryId = String(body.categoryId)
+        const categoryName = [...categoryIds.entries()].find(([, id]) => id === categoryId)?.[0]
+        if (!categoryName) {
+          return jsonResponse(
+            {
+              error: {
+                code: 'PRODUCT_NOT_FOUND',
+                message: 'Kategori tidak ditemukan di workspace ini.',
+              },
+            },
+            404
+          )
+        }
+        product.category = categoryName
+      }
+    }
+    return jsonResponse({ data: apiProducts().find((item) => item.id === product.id) })
+  }
+
+  if (productIdFromPath && method === 'GET') {
+    const id = productIdFromPath
     const product = apiProducts().find((item) => item.id === id)
     if (!product)
       return jsonResponse({ error: { code: 'NOT_FOUND', message: 'Produk tidak ditemukan.' } }, 404)
@@ -498,16 +858,19 @@ export async function demoFetch(
       },
     })
   }
-  if (route === '/api/products') {
+
+  if (route === '/api/products' && method === 'GET') {
     const search = query.get('search')?.toLowerCase()
-    const items = search
-      ? apiProducts().filter(
-          (product) =>
-            product.name.toLowerCase().includes(search) ||
-            product.sku.toLowerCase().includes(search) ||
-            (product.barcode ?? '').includes(search)
-        )
-      : apiProducts()
+    const categoryId = query.get('categoryId')
+    const items = apiProducts().filter((product) => {
+      if (categoryId && product.category?.id !== categoryId) return false
+      if (!search) return true
+      return (
+        product.name.toLowerCase().includes(search) ||
+        product.sku.toLowerCase().includes(search) ||
+        (product.barcode ?? '').includes(search)
+      )
+    })
     return jsonResponse({ data: items, pagination: { total: items.length } })
   }
 
@@ -517,7 +880,7 @@ export async function demoFetch(
       data: [...categoryIds.entries()].map(([name, id]) => ({
         id,
         name,
-        _count: { products: mockProducts.filter((product) => product.category === name).length },
+        _count: { products: state.products.filter((product) => product.category === name).length },
       })),
     })
   }
@@ -531,7 +894,7 @@ export async function demoFetch(
     const lines = state.balances
       .filter((balance) => balance.locationId === id)
       .map((balance, index) => {
-        const product = mockProducts.find((item) => item.id === balance.productId)!
+        const product = state.products.find((item) => item.id === balance.productId)!
         return {
           id: `bal-${id}-${index}`,
           level: balance.level ?? 1,
@@ -608,7 +971,7 @@ export async function demoFetch(
   // ---- reports ----
   if (route === '/api/reports/low-stock') {
     const quantities = quantityByProduct(state.balances)
-    const items = mockProducts
+    const items = state.products
       .filter(
         (product) => product.active && (quantities.get(product.id) ?? 0) < product.reorderThreshold
       )
@@ -630,6 +993,8 @@ export async function demoFetch(
     const productId = query.get('productId')
     const from = query.get('from')
     const to = query.get('to')
+    const page = Math.max(1, Number(query.get('page') ?? 1) || 1)
+    const perPage = Math.min(100, Math.max(1, Number(query.get('perPage') ?? 50) || 50))
     const items = apiMovements().filter((movement) => {
       if (type && movement.type !== type) return false
       if (productId && movement.productId !== productId) return false
@@ -637,7 +1002,10 @@ export async function demoFetch(
       if (to && new Date(movement.createdAt) > new Date(to)) return false
       return true
     })
-    return jsonResponse({ data: items, pagination: { total: items.length } })
+    return jsonResponse({
+      data: items.slice((page - 1) * perPage, page * perPage),
+      pagination: { page, perPage, total: items.length },
+    })
   }
   if (route === '/api/reports/export.csv') {
     const report = query.get('report') ?? 'movements'
@@ -645,7 +1013,7 @@ export async function demoFetch(
       report === 'low-stock'
         ? [
             ['sku', 'produk', 'kategori', 'stok', 'ambang', 'kekurangan'],
-            ...mockProducts
+            ...state.products
               .filter((product) => product.active)
               .map((product) => [
                 product.sku,
@@ -658,7 +1026,7 @@ export async function demoFetch(
         : [
             ['waktu', 'sku', 'produk', 'jenis', 'jumlah', 'dari', 'ke', 'referensi', 'aktor'],
             ...apiMovements().map((movement) => {
-              const product = mockProducts.find((item) => item.id === movement.productId)
+              const product = state.products.find((item) => item.id === movement.productId)
               return [
                 movement.createdAt,
                 product?.sku ?? '',

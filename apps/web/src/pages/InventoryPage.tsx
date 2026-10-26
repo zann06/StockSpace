@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Package, PackagePlus, SearchX } from 'lucide-react'
 
 import { useCategories, useProductsList, useWarehouseData } from '@/api/hooks'
+import { useWorkspace } from '@/api/workspace-context'
+import { roleAtLeast } from '@/lib/roles'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -20,6 +22,8 @@ const PAGE_SIZE = 8
 export function InventoryPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { workspace } = useWorkspace()
+  const canManageProducts = roleAtLeast(workspace?.role, 'ADMIN')
   const [searchParams, setSearchParams] = useSearchParams()
   const [category, setCategory] = useState('ALL')
   const [sort, setSort] = useState<SortKey>('name')
@@ -102,13 +106,14 @@ export function InventoryPage() {
         subtitle={t('Daftar produk dan penyebaran stok per lokasi penyimpanan.')}
         meta={<DemoBadge />}
         actions={
-          <Button
-            disabled
-            title="Pembuatan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
-          >
-            <PackagePlus aria-hidden className="h-4 w-4" />
-            {t('Tambah Produk')}
-          </Button>
+          canManageProducts ? (
+            <Link to="/inventory/products/new">
+              <Button>
+                <PackagePlus aria-hidden className="h-4 w-4" />
+                {t('Tambah Produk')}
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 

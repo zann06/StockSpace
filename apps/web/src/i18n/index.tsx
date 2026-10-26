@@ -267,6 +267,9 @@ const en: Record<string, string> = {
   'Nilai stok = Σ(kuantitas × harga pokok) — perhitungan didokumentasikan di docs/database.md':
     'Stock value = Σ(quantity × cost price) — documented in docs/database.md',
   'Laporan memuat hingga 50 transaksi per halaman': 'Reports show up to 50 transactions per page',
+  'Halaman {page} dari {total}': 'Page {page} of {total}',
+  Sebelumnya: 'Previous',
+  Berikutnya: 'Next',
   'ekspor CSV mengunduh hingga 5.000 baris dengan filter yang sedang aktif.':
     'CSV export downloads up to 5,000 rows with the active filters.',
   // Settings
@@ -329,6 +332,52 @@ const en: Record<string, string> = {
   Kemarin: 'Yesterday',
   hari: 'days',
   Terlaris: 'bestseller',
+  // Workspace members
+  Staf: 'Staff',
+  Peran: 'Role',
+  Anda: 'You',
+  'Memuat anggota…': 'Loading members…',
+  'Gagal memuat anggota.': 'Failed to load members.',
+  'Belum ada anggota.': 'No members yet.',
+  'Peran untuk {name}': 'Role for {name}',
+  'Hapus {name}': 'Remove {name}',
+  'Yakin menghapus {name}?': 'Remove {name}?',
+  'Ya, hapus': 'Yes, remove',
+  Batal: 'Cancel',
+  '{name} berhasil diundang.': '{name} was invited.',
+  'Peran {name} diperbarui.': "{name}'s role was updated.",
+  '{name} dihapus dari workspace.': '{name} was removed from the workspace.',
+  'Email pengguna terdaftar': 'Registered user email',
+  'Kirim undangan': 'Send invite',
+  'Mengundang…': 'Inviting…',
+  'Tutup formulir undangan': 'Close invite form',
+  'Pengguna harus sudah memiliki akun StockSpace dengan email ini.':
+    'The user must already have a StockSpace account with this email.',
+  'Hanya Owner dan Admin yang dapat mengelola anggota.':
+    'Only Owners and Admins can manage members.',
+  // Product create/edit
+  'Akses terbatas': 'Restricted access',
+  'Hanya Owner dan Admin yang dapat menambah atau mengubah produk.':
+    'Only Owners and Admins can create or edit products.',
+  'Tautan tidak valid atau produk telah dihapus.':
+    'The link is invalid or the product was removed.',
+  'Kembali ke Detail Produk': 'Back to Product Details',
+  'Perbarui data produk. SKU tidak dapat diubah setelah dibuat.':
+    'Update the product. The SKU cannot be changed after creation.',
+  'Lengkapi data produk baru untuk workspace ini.':
+    'Fill in the new product details for this workspace.',
+  'Nama produk': 'Product name',
+  'Tanpa kategori': 'No category',
+  Satuan: 'Unit',
+  Opsional: 'Optional',
+  'Produk aktif': 'Active product',
+  Deskripsi: 'Description',
+  'Gagal menyimpan produk.': 'Failed to save the product.',
+  'Simpan Perubahan': 'Save Changes',
+  'Buat Produk': 'Create Product',
+  'SKU tidak dapat diubah.': 'The SKU cannot be changed.',
+  'Contoh: Laptop ASUS TUF F15': 'Example: Laptop ASUS TUF F15',
+  'Nilai terlalu besar.': 'Value is too large.',
 }
 
 const CATALOGS: Record<Lang, Record<string, string>> = { id: {}, en }

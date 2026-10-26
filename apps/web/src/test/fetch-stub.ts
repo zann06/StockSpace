@@ -8,6 +8,7 @@ import { vi } from 'vitest'
 
 import { balances, buildMovements, locations, products, warehouse } from '@/mocks/warehouse-data'
 import { lowStockProducts, quantityByProduct } from '@/lib/stats'
+import type { ApiProduct } from '@/api/types'
 
 const NOW = new Date()
 
@@ -46,7 +47,7 @@ const apiLocations = locations.map((location) => ({
   levels: 3,
 }))
 
-const apiProducts = products.map((product) => ({
+const initialProducts: ApiProduct[] = products.map((product) => ({
   id: product.id,
   sku: product.sku,
   name: product.name,
@@ -60,6 +61,11 @@ const apiProducts = products.map((product) => ({
   totalQuantity: quantities.get(product.id) ?? 0,
   createdAt: NOW.toISOString(),
   updatedAt: NOW.toISOString(),
+}))
+
+let apiProducts: ApiProduct[] = initialProducts.map((product) => ({
+  ...product,
+  category: product.category ? { ...product.category } : null,
 }))
 
 const apiMovements = movements.map((movement, index) => ({
@@ -135,15 +141,82 @@ const sessionUser = {
 
 let sessionEnabled = true
 
+const initialMembers = [
+  {
+    id: 'member-1',
+    userId: 'user-1',
+    name: 'Farid Rizky',
+    email: 'farid@technusa.example',
+    role: 'OWNER',
+    createdAt: NOW.toISOString(),
+  },
+  {
+    id: 'member-2',
+    userId: 'user-2',
+    name: 'Dewi Lestari',
+    email: 'dewi@technusa.example',
+    role: 'STAFF',
+    createdAt: NOW.toISOString(),
+  },
+  {
+    id: 'member-3',
+    userId: 'user-3',
+    name: 'Nadia Viewer',
+    email: 'viewer@technusa.example',
+    role: 'VIEWER',
+    createdAt: NOW.toISOString(),
+  },
+]
+
+let apiMembers = initialMembers.map((member) => ({ ...member }))
+
 /** Installs a fetch stub serving fixture data for the API endpoints the UI uses.
  * Pass `{ session: false }` to simulate a signed-out visitor. */
 export function installFetchStub(options: { session?: boolean } = {}) {
   sessionEnabled = options.session ?? true
+  apiMembers = initialMembers.map((member) => ({ ...member }))
+  apiProducts = initialProducts.map((product) => ({
+    ...product,
+    category: product.category ? { ...product.category } : null,
+  }))
   const stub = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof URL ? input : input)
     const method = init?.method ?? 'GET'
 
     if (url.endsWith('/api/workspaces')) return jsonResponse({ data: [workspace] })
+
+    if (url.includes('/api/members')) {
+      if (method === 'GET') return jsonResponse({ data: apiMembers })
+
+      const payload = JSON.parse(String(init?.body ?? '{}')) as {
+        email?: string
+        role?: string
+      }
+      if (method === 'POST') {
+        const member = {
+          id: `member-${apiMembers.length + 1}`,
+          userId: `user-${apiMembers.length + 1}`,
+          name: (payload.email ?? '').split('@')[0] ?? 'Anggota Baru',
+          email: payload.email ?? '',
+          role: payload.role ?? 'STAFF',
+          createdAt: NOW.toISOString(),
+        }
+        apiMembers.push(member)
+        return jsonResponse({ data: member })
+      }
+
+      const memberId = url.split('/api/members/')[1]?.split('?')[0]
+      if (method === 'PATCH') {
+        const member = apiMembers.find((candidate) => candidate.id === memberId)
+        if (!member) return jsonResponse({ error: { code: 'MEMBER_NOT_FOUND' } }, 404)
+        member.role = payload.role ?? member.role
+        return jsonResponse({ data: member })
+      }
+      if (method === 'DELETE') {
+        apiMembers = apiMembers.filter((candidate) => candidate.id !== memberId)
+        return jsonResponse({ data: { id: memberId } })
+      }
+    }
 
     if (url.includes('/api/warehouses/') && url.endsWith('/layout')) {
       return jsonResponse({
@@ -217,8 +290,37 @@ export function installFetchStub(options: { session?: boolean } = {}) {
       })
     }
 
-    if (url.includes('/api/products/')) {
-      const id = url.split('/api/products/')[1]
+    const productIdFromPath = url.includes('/api/products/')
+      ? url.split('/api/products/')[1]?.split('?')[0]
+      : null
+
+    if (productIdFromPath && method === 'PATCH') {
+      const product = apiProducts.find((item) => item.id === productIdFromPath)
+      if (!product) return jsonResponse({ error: { code: 'PRODUCT_NOT_FOUND' } }, 404)
+      const payload = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+      if (payload.name !== undefined) product.name = String(payload.name)
+      if (payload.unit !== undefined) product.unit = String(payload.unit)
+      if (payload.barcode !== undefined)
+        product.barcode = payload.barcode ? String(payload.barcode) : null
+      if (payload.costPrice !== undefined) product.costPrice = Number(payload.costPrice)
+      if (payload.reorderThreshold !== undefined)
+        product.reorderThreshold = Number(payload.reorderThreshold)
+      if (payload.description !== undefined)
+        product.description = payload.description ? String(payload.description) : null
+      if (payload.active !== undefined) product.active = payload.active !== false
+      if (payload.categoryId !== undefined) {
+        const categoryId = payload.categoryId ? String(payload.categoryId) : null
+        const category = categoryId
+          ? [...categoryIds.entries()].find(([, id]) => id === categoryId)
+          : null
+        product.category = category ? { id: category[1], name: category[0] } : null
+      }
+      product.updatedAt = NOW.toISOString()
+      return jsonResponse({ data: product })
+    }
+
+    if (productIdFromPath && method === 'GET') {
+      const id = productIdFromPath
       const product = apiProducts.find((item) => item.id === id)
       if (!product)
         return jsonResponse(
@@ -251,6 +353,30 @@ export function installFetchStub(options: { session?: boolean } = {}) {
     }
 
     if (url.includes('/api/products')) {
+      if (method === 'POST') {
+        const payload = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        const categoryId = payload.categoryId ? String(payload.categoryId) : null
+        const category = categoryId
+          ? [...categoryIds.entries()].find(([, id]) => id === categoryId)
+          : null
+        const created = {
+          id: `p-new-${apiProducts.length + 1}`,
+          sku: String(payload.sku ?? ''),
+          name: String(payload.name ?? ''),
+          category: category ? { id: category[1], name: category[0] } : null,
+          unit: String(payload.unit ?? 'pcs'),
+          barcode: payload.barcode ? String(payload.barcode) : null,
+          costPrice: Number(payload.costPrice ?? 0),
+          reorderThreshold: Number(payload.reorderThreshold ?? 0),
+          description: payload.description ? String(payload.description) : null,
+          active: payload.active !== false,
+          totalQuantity: 0,
+          createdAt: NOW.toISOString(),
+          updatedAt: NOW.toISOString(),
+        }
+        apiProducts.push(created)
+        return jsonResponse({ data: created })
+      }
       const searchParam = new URL(url).searchParams.get('search')?.toLowerCase()
       const filtered = searchParam
         ? apiProducts.filter(

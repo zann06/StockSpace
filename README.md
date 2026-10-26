@@ -46,10 +46,15 @@ as real React components following `design-reference.png`.*
   construction and covered by integration tests, including concurrent requests.
 - **Dashboard & reports from live data** — KPIs, low-stock summary, top-moved
   products, 7-day movement chart, per-location utilization, filtered movement
-  report, and CSV export.
+  report with pagination, and CSV export.
 - **Authentication & roles** — email/password sign-in with cookie sessions
   (better-auth). Roles enforced server-side: VIEWER read-only, STAFF records
   movements, ADMIN+ edits products. Workspaces are membership-scoped.
+- **Workspace member management** — Owners/Admins invite existing accounts,
+  change roles, and remove members; the last Owner is protected and nobody can
+  grant a role above their own.
+- **Admin product CRUD** — create and edit products (category, unit, pricing,
+  reorder threshold, archive toggle) with an immutable SKU per workspace.
 - **Low-stock notifications** — created automatically when a product crosses
   its reorder threshold, grouped (one unread alert per product).
 - **Onboarding tour** — an animated spotlight tour introduces the app on first
@@ -107,6 +112,11 @@ business "Toko TechNusa", password for all: `stockspace-demo`):
 These accounts exist **only in the local development seed** — never in
 production (roles are enforced server-side on every request).
 
+In the static demo, sign in as `farid@technusa.example` (OWNER), then open
+**Settings → Pengguna** to try member management: invite
+`admin@technusa.example` or `sari@technusa.example` (demo accounts that are not
+members yet), change their roles, or remove them. Demo state resets on refresh.
+
 ### Docker
 
 ```bash
@@ -163,9 +173,10 @@ stockspace/
 - [x] Phase 4 — better-auth, server-side roles, reports + CSV, notifications
 - [x] Phase 5 — a11y pass, E2E smoke + axe, rate limiting, VPS guide
 - [x] Post-MVP polish — bilingual ID/EN, onboarding tour, delivery animation
+- [x] Post-MVP features — workspace member management, admin product CRUD
 
-**Ideas beyond the MVP:** workspace-member management UI, admin product CRUD
-UI, multi-warehouse layouts, report pagination, barcode scanning.
+**Ideas beyond the MVP:** pending email invitations (needs a mail provider and
+an invite model), multi-warehouse layouts, barcode scanning.
 
 ## Contributing
 

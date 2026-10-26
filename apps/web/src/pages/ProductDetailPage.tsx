@@ -10,6 +10,8 @@ import {
 
 import type { MovementType } from '@/types'
 import { useProduct } from '@/api/hooks'
+import { useWorkspace } from '@/api/workspace-context'
+import { roleAtLeast } from '@/lib/roles'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -29,6 +31,8 @@ const TYPE_ICON: Record<MovementType, typeof PackagePlus> = {
 export function ProductDetailPage() {
   const { t } = useI18n()
   const { id } = useParams<{ id: string }>()
+  const { workspace } = useWorkspace()
+  const canManageProducts = roleAtLeast(workspace?.role, 'ADMIN')
   const productQuery = useProduct(id)
 
   if (productQuery.isLoading) {
@@ -116,13 +120,11 @@ export function ProductDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              disabled
-              title="Penyuntingan produk dari UI tersedia mulai Fase 4 (butuh sesi & otorisasi)."
-            >
-              {t('Edit Produk')}
-            </Button>
+            {canManageProducts ? (
+              <Link to={`/inventory/products/${product.id}/edit`}>
+                <Button variant="secondary">{t('Edit Produk')}</Button>
+              </Link>
+            ) : null}
             <Link to="/transactions">
               <Button>
                 <ArrowLeftRight aria-hidden className="h-4 w-4" />

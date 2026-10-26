@@ -8,6 +8,7 @@ import { LanguageSwitch } from '@/components/ui/LanguageSwitch'
 import { Button } from '@/components/ui/Button'
 import { DemoBadge } from '@/components/common/DemoBadge'
 import { PageHeader } from '@/components/common/PageHeader'
+import { MembersCard } from '@/components/settings/MembersCard'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -106,24 +107,7 @@ export function SettingsPage() {
           </div>
         </Card>
 
-        <Card>
-          <CardHeader title="Pengguna" subtitle={t('Manajemen anggota workspace dan perannya')} />
-          <div className="px-5 py-5">
-            <p className="rounded-control bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
-              Manajemen pengguna (mengundang anggota, mengatur peran Owner/Admin/Staf/Viewer)
-              tersedia setelah autentikasi diimplementasikan pada Fase 4. Role sudah diterapkan di
-              skema database dan siap dipakai API.
-            </p>
-            <button
-              type="button"
-              disabled
-              title="Manajemen pengguna tersedia setelah autentikasi Fase 4 terhubung."
-              className="mt-3 inline-flex h-9 cursor-not-allowed items-center rounded-control border border-line bg-surface px-4 text-xs font-bold text-muted"
-            >
-              {t('+ Undang Pengguna')}
-            </button>
-          </div>
-        </Card>
+        <MembersCard />
 
         <Card>
           <CardHeader title={t('Bahasa / Language')} subtitle={t('Bahasa tampilan aplikasi')} />

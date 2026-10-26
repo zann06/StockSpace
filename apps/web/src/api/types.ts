@@ -1,12 +1,23 @@
 /** API response types (Phase 3). Shapes mirror the Fastify routes exactly. */
 
+export type MemberRole = 'OWNER' | 'ADMIN' | 'STAFF' | 'VIEWER'
+
 export interface WorkspaceSummary {
   id: string
   name: string
   currency: string
   timezone: string
   /** Role of the signed-in user in this workspace (from /api/workspaces). */
-  role?: 'OWNER' | 'ADMIN' | 'STAFF' | 'VIEWER'
+  role?: MemberRole
+}
+
+export interface ApiMember {
+  id: string
+  userId: string
+  name: string
+  email: string
+  role: MemberRole
+  createdAt: string
 }
 
 export interface DashboardLowStockItem {
@@ -53,6 +64,21 @@ export interface ApiCategory {
   name: string
   _count: { products: number }
 }
+
+/** Payload accepted by POST /api/products (SKU is immutable after creation). */
+export interface ProductInput {
+  sku: string
+  name: string
+  categoryId?: string | null
+  unit: string
+  barcode?: string | null
+  costPrice: number
+  reorderThreshold: number
+  description?: string | null
+  active: boolean
+}
+
+export type ProductUpdateInput = Partial<Omit<ProductInput, 'sku'>>
 
 export interface ApiWarehouseRef {
   id: string

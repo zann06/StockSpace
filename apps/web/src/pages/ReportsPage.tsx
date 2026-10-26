@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Download, FileBarChart } from 'lucide-react'
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, FileBarChart } from 'lucide-react'
 
 import {
   downloadReportCsv,
@@ -21,6 +21,8 @@ import { useI18n } from '@/i18n'
 
 type ReportType = 'ALL' | 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
 
+const REPORT_PAGE_SIZE = 50
+
 /** Reports — low-stock, movement history with filters, and CSV export. */
 export function ReportsPage() {
   const { t } = useI18n()
@@ -28,6 +30,7 @@ export function ReportsPage() {
   const [to, setTo] = useState('')
   const [type, setType] = useState<ReportType>('ALL')
   const [productId, setProductId] = useState('')
+  const [page, setPage] = useState(1)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exporting, setExporting] = useState<string | null>(null)
 
@@ -41,9 +44,14 @@ export function ReportsPage() {
     ...(to ? { to: new Date(`${to}T23:59:59`).toISOString() } : {}),
     ...(type !== 'ALL' ? { type } : {}),
     ...(productId ? { productId } : {}),
+    page,
+    perPage: REPORT_PAGE_SIZE,
   }
   const movementsQuery = useMovementReport(params)
   const movements = movementsQuery.data?.data ?? []
+  const totalMovements = movementsQuery.data?.pagination.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalMovements / REPORT_PAGE_SIZE))
+  const showPagination = totalMovements > REPORT_PAGE_SIZE
 
   const exportCsv = async (report: 'low-stock' | 'movements') => {
     setExportError(null)
@@ -184,7 +192,10 @@ export function ReportsPage() {
               <input
                 type="date"
                 value={from}
-                onChange={(event) => setFrom(event.target.value)}
+                onChange={(event) => {
+                  setFrom(event.target.value)
+                  setPage(1)
+                }}
                 className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               />
             </label>
@@ -193,7 +204,10 @@ export function ReportsPage() {
               <input
                 type="date"
                 value={to}
-                onChange={(event) => setTo(event.target.value)}
+                onChange={(event) => {
+                  setTo(event.target.value)
+                  setPage(1)
+                }}
                 className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               />
             </label>
@@ -201,7 +215,10 @@ export function ReportsPage() {
               {t('Jenis')}
               <select
                 value={type}
-                onChange={(event) => setType(event.target.value as ReportType)}
+                onChange={(event) => {
+                  setType(event.target.value as ReportType)
+                  setPage(1)
+                }}
                 className="h-9 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               >
                 <option value="ALL">{t('Semua')}</option>
@@ -215,7 +232,10 @@ export function ReportsPage() {
               Produk
               <select
                 value={productId}
-                onChange={(event) => setProductId(event.target.value)}
+                onChange={(event) => {
+                  setProductId(event.target.value)
+                  setPage(1)
+                }}
                 className="h-9 max-w-52 rounded-control border border-line bg-surface px-2.5 text-sm font-semibold text-ink"
               >
                 <option value="">{t('Semua produk')}</option>
@@ -234,6 +254,7 @@ export function ReportsPage() {
                   setTo('')
                   setType('ALL')
                   setProductId('')
+                  setPage(1)
                 }}
                 className="h-9 rounded-control px-3 text-xs font-bold text-primary hover:bg-primary-soft"
               >
@@ -330,6 +351,40 @@ export function ReportsPage() {
               </table>
             </div>
           )}
+          {showPagination ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3">
+              <span className="text-[11px] font-semibold text-muted">
+                {t('Halaman {page} dari {total}', {
+                  page: Math.min(page, totalPages),
+                  total: totalPages,
+                })}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page <= 1 || movementsQuery.isFetching}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label={t('Halaman sebelumnya')}
+                  title={t('Halaman sebelumnya')}
+                >
+                  <ChevronLeft aria-hidden className="h-3.5 w-3.5" />
+                  {t('Sebelumnya')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={page >= totalPages || movementsQuery.isFetching}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  aria-label={t('Halaman berikutnya')}
+                  title={t('Halaman berikutnya')}
+                >
+                  {t('Berikutnya')}
+                  <ChevronRight aria-hidden className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </Card>
       </div>
 
