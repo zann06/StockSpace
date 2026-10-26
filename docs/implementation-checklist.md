@@ -1,7 +1,8 @@
 # Implementation checklist
 
 Working checklist derived from `PRD.md` and the phased plan. Status is updated
-as work lands. "Phase 1 (current)" items use labelled mock data only.
+as work lands; historical phase notes describe the state at the end of that
+phase, not the current app.
 
 ## Phase 0 — Project foundation ✅
 
@@ -15,7 +16,7 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] GitHub Actions CI: format check, lint, typecheck, test, build
 - [x] `docs/architecture.md` with recorded decisions
 
-## Phase 1 — UI shell and 3D prototype ✅ (current)
+## Phase 1 — UI shell and 3D prototype ✅
 
 - [x] Responsive app shell: collapsible sidebar, header with global search,
       notifications, profile menu, demo-mode indicator
@@ -41,7 +42,7 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] Unit + component tests (stats, mock invariants, shell, fallback)
 - [x] Lint, typecheck, tests, production build all run and pass
 
-## Phase 2 — Backend and persistence ✅ (current)
+## Phase 2 — Backend and persistence ✅
 
 - [x] Prisma schema (users, workspaces, workspace_members, warehouses, zones,
       storage_locations, categories, products, inventory_balances,
@@ -60,8 +61,9 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] Reject negative stock (service + DB constraint), zero/negative
       quantities, same-source transfers, adjustments without reason
 - [x] Integration tests (real PostgreSQL via Docker / CI service container):
-      26 tests covering invariants incl. concurrent oversell, rollback on
-      failed movement insert, cross-workspace access, duplicate SKU
+      42 tests covering invariants incl. concurrent oversell, rollback on
+      failed movement insert, cross-workspace access, duplicate SKU, member
+      management, and product updates
 - [x] Fictional seed data ("Toko TechNusa") mirroring the Phase 1 web mocks
 - [x] API Dockerfile + compose `api` service (migrate-deploy on boot)
 - [x] CI: dedicated `api` job with a PostgreSQL service container
@@ -71,7 +73,9 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
 - [x] Load warehouse layout from API (`GET /api/warehouses/:id/layout`)
 - [x] 3D objects bound to storage-location records; detail panel shows real
       balances
-- [ ] Movement success refreshes balances, dashboard metrics, and scene state
+- [x] Movement success refreshes balances, dashboard metrics, and scene state
+      (TanStack Query invalidation: dashboard, layout, products, movements,
+      location inventory, notifications)
 - [x] Replace mock KPIs with `GET /api/dashboard/summary`; TanStack Query layer
 - [x] Remove/retire `src/mocks` from the default path
 
@@ -119,3 +123,16 @@ as work lands. "Phase 1 (current)" items use labelled mock data only.
   instead of silently failing.
 - Products are archived through the `active` toggle; there is no hard DELETE
   endpoint, preserving movement history.
+
+### Remaining optional work (not blocking the MVP)
+
+- [ ] Localize API error messages through `error.code` on the client — the API
+      returns Indonesian messages, which English users currently see verbatim.
+- [ ] Verify the full docker compose stack (web + api + db) end-to-end on a
+      clean machine; CI builds the images, but they have not been run together
+      on the dev machine.
+- [ ] Browser E2E for transfer, adjustment, and viewer-denied flows — the
+      Playwright smoke test covers login → inventory → stock-in → dashboard,
+      while API integration tests cover the business rules.
+- [ ] Upload a social preview image in the GitHub repository settings (manual,
+      cosmetic).
