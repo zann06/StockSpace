@@ -151,6 +151,10 @@ describe('movementSeries', () => {
     const series = movementSeries(movements, now, 7)
     expect(series).toHaveLength(7)
     expect(series.at(-1)).toMatchObject({ masuk: 2, keluar: 1 })
+    // The chart keys points by calendar day, so every point carries an ISO date.
+    expect(series.every((point) => /^\d{4}-\d{2}-\d{2}$/.test(point.date))).toBe(true)
+    expect(new Set(series.map((point) => point.date)).size).toBe(7)
+    expect(series.at(-1)?.date.endsWith('-24')).toBe(true)
   })
 })
 

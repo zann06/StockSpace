@@ -197,6 +197,8 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         quantity: parsed.data.quantity,
         destinationLocationId: meta.needsDestination ? form.destinationLocationId : null,
         sourceLocationId: meta.needsSource ? form.sourceLocationId : null,
+        destinationLevel: meta.needsDestination ? Number(form.destinationLevel) : null,
+        sourceLevel: meta.needsSource ? Number(form.sourceLevel) : null,
       })
       setForm((previous) => ({ ...previous, quantity: '', reference: '', note: '' }))
     } catch (error) {

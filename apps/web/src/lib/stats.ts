@@ -3,6 +3,13 @@ import { formatWeekday, isSameDay } from '@/lib/format'
 
 /** Pure inventory computations — unit-tested and shared by every page. */
 
+/** Local calendar day as `YYYY-MM-DD` (never shifted by a UTC conversion). */
+function toIsoDay(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
 export function quantityByProduct(balances: Balance[]): Map<string, number> {
   const map = new Map<string, number>()
   for (const balance of balances) {
@@ -43,6 +50,8 @@ export function movementsToday(movements: Movement[], now: Date): number {
 }
 
 export interface MovementDayPoint {
+  /** Calendar day as `YYYY-MM-DD`, matching the API's chart payload. */
+  date: string
   label: string
   masuk: number
   keluar: number
@@ -55,6 +64,7 @@ export function movementSeries(movements: Movement[], now: Date, days = 7): Move
     const date = new Date(now)
     date.setDate(date.getDate() - offset)
     points.push({
+      date: toIsoDay(date),
       label: offset === 0 ? 'Hari ini' : formatWeekday(date),
       masuk: 0,
       keluar: 0,

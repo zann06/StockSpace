@@ -18,8 +18,8 @@ movements, watch the 3D delivery animation — sample data, resets on refresh).
 ## Demo
 
 End-to-end flow recorded against the real stack (API + PostgreSQL + browser) —
-sign in, browse the 3D warehouse, record a stock-in, watch the delivery box fly
-to its rack, and see the dashboard update:
+sign in, browse the 3D warehouse, record a stock-in, watch the forklift carry the
+box to its rack, and see the dashboard update:
 
 ![StockSpace demo — login, 3D warehouse, stock-in with delivery animation, updated dashboard](docs/screenshots/demo-stock-in.gif)
 
@@ -30,8 +30,9 @@ to its rack, and see the dashboard update:
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Warehouse 3D](docs/screenshots/warehouse.png) |
 | ![Inventory](docs/screenshots/inventory.png) | ![Login](docs/screenshots/login.png) |
 
-*Captured by the Playwright smoke test against the live stack; the UI is built
-as real React components following `design-reference.png`.*
+*Captured with Playwright from the running app (dashboard, and Warehouse 3D with
+Rak A2 selected); the UI is built as real React components following
+`design-reference.png`.*
 
 ## Features
 
@@ -39,8 +40,12 @@ as real React components following `design-reference.png`.*
   staging/packing areas. Click a rack to open its items and movement history;
   orbit/pan/zoom, camera reset, 3D/2D top-down toggle, level filters (L1–L3),
   fullscreen, and an accessible location list when WebGL is unavailable.
-  A committed stock movement triggers a short **delivery animation** (a cargo
-  box flies to the destination rack) — skipped under reduced-motion.
+  A committed stock movement triggers a **delivery animation**: the forklift
+  rolls down the aisle at a calm, eased pace, lifts the box through a
+  four-stage pickup (approach → align → grip → lift), carries it with a light
+  suspension bob, and sets it down with a landing squash — plus trail
+  particles, a heading indicator, a proximity warning ring near racks, and a
+  highlight ring when you click a box. Skipped under reduced-motion.
 - **Real inventory workflows** — stock in/out/transfer/adjustment forms write
   to PostgreSQL inside database transactions; overselling is impossible by
   construction and covered by integration tests, including concurrent requests.
@@ -173,6 +178,8 @@ stockspace/
 - [x] Phase 4 — better-auth, server-side roles, reports + CSV, notifications
 - [x] Phase 5 — a11y pass, E2E smoke + axe, rate limiting, VPS guide
 - [x] Post-MVP polish — bilingual ID/EN, onboarding tour, delivery animation
+- [x] Post-MVP animation pass — eased forklift choreography, box interaction
+      feedback, proximity alerts, LOD + reduced-motion coverage
 - [x] Post-MVP features — workspace member management, admin product CRUD
 
 **Ideas beyond the MVP:** pending email invitations (needs a mail provider and

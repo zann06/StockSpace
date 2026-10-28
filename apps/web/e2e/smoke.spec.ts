@@ -15,9 +15,10 @@ const DEMO = { email: 'dewi@technusa.example', password: 'stockspace-demo' }
 /** Parses the "Total Stok" KPI value (Indonesian thousand separators). */
 async function totalUnitsFromDashboard(page: Page): Promise<number> {
   await expect(page.getByText('Total Stok')).toBeVisible()
-  const raw = await page
-    .locator('xpath=//p[normalize-space()="Total Stok"]/following::p[1]')
-    .textContent()
+  const value = page.locator('xpath=//p[normalize-space()="Total Stok"]/following::p[1]')
+  // The card renders a '…' placeholder until the summary query resolves.
+  await expect(value).toContainText(/\d/)
+  const raw = await value.textContent()
   const match = (raw ?? '').match(/[\d.]+/)
   const number = Number.parseInt((match?.[0] ?? '').replace(/\./g, ''), 10)
   expect(Number.isNaN(number)).toBe(false)

@@ -19,6 +19,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
     clearMocks: true,
+    // Component tests render the full app shell (charts + 3D scene); give slow
+    // CI runners room so timing does not turn into flakes.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     // Playwright specs live in e2e/ — never collect them here.
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },

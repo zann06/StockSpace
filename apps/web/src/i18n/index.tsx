@@ -94,6 +94,8 @@ const en: Record<string, string> = {
   Terisi: 'Occupied',
   Menipis: 'Low',
   Kosong: 'Empty',
+  'Forklift siap': 'Forklift ready',
+  'Mengantar barang': 'Delivering cargo',
   'Stok Menipis!': 'Low Stock!',
   'Belum ada lokasi dipilih': 'No location selected',
   'Klik rak atau area pada scene 3D, atau buka daftar lokasi, untuk melihat detail dan barang yang tersimpan di dalamnya.':
