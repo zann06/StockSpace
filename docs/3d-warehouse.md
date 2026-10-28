@@ -71,3 +71,9 @@ prefers reduced motion — the movement is still recorded, just not animated.
   come from a fixed-size pool and are gated behind reduced-motion.
 - Movements invalidate the layout query, so balances/status dots update without
   a manual refresh.
+- Shadows use the percentage-closer filter (`PCFShadowMap`) explicitly: three.js
+  removed `PCFSoftShadowMap`, which react-three-fiber still mapped the plain
+  `shadows` prop to. One console warning remains and is owned by the library:
+  react-three-fiber instantiates `THREE.Clock`, which three.js has deprecated in
+  favour of `THREE.Timer`; it is harmless and disappears once the renderer
+  updates upstream.

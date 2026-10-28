@@ -15,10 +15,9 @@ export const E2E_DATABASE_URL =
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
-  // The smoke flow walks the whole app (3D warehouse + axe scan) on a single
-  // worker and takes ~100s on modest hardware, so the 60s default is too tight
-  // for slower runners.
-  timeout: 180_000,
+  // The happy-path flow marks itself `test.slow()` (3x budget) because it walks
+  // the whole app on one worker; the default keeps genuine hangs short.
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,

@@ -40,6 +40,9 @@ test('login page rejects invalid credentials with a readable error', async ({ pa
 test('smoke: login → dashboard (a11y scan) → warehouse → inventory → stock-in → updated dashboard → logout', async ({
   page,
 }) => {
+  // One long happy-path walk through the whole app (3D scene + axe scan), so it
+  // gets a larger budget than the default on slower machines.
+  test.slow()
   await page.addInitScript(() => localStorage.setItem('stockspace.tourDone', '1'))
   // 1. Sign in as STAFF.
   await page.goto('/login')

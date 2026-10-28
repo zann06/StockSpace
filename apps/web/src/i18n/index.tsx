@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components --
+   the provider and its useI18n hook belong together; splitting them would only
+   add indirection for every consumer. */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { setActiveLocale } from '@/lib/format'

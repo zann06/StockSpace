@@ -1553,7 +1553,10 @@ export function WarehouseScene(props: WarehouseSceneProps) {
   const { zoomCommand, resetNonce, onReady, ...rest } = props
   return (
     <Canvas
-      shadows
+      // `soft` maps to PCFSoftShadowMap, which three.js removed (it silently
+      // falls back to PCF anyway) — ask for the percentage-closer filter
+      // explicitly so the console stays clean and the cheaper filter is used.
+      shadows="percentage"
       dpr={[1, 2]}
       camera={{ position: [7.4, 5.6, 8.8], fov: 42 }}
       gl={{ antialias: true }}

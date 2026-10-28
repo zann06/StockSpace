@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components --
+   this module intentionally ships the tour plus its storage helpers
+   (markTourDone/isTourDone/restartTour) so callers have one import. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useI18n } from '@/i18n'
