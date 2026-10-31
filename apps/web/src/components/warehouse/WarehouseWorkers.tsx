@@ -1,4 +1,6 @@
 import { useRef } from 'react'
+
+import { lerpAngle } from '@/lib/warehouse3d'
 import { useFrame } from '@react-three/fiber'
 import { type Group, type Mesh, CatmullRomCurve3, Vector3 } from 'three'
 
@@ -144,29 +146,48 @@ function HaulerWorker({
 }) {
   const ref = useRef<Group>(null)
   const walkPhase = useRef(0)
+  const yaw = useRef(0)
+  // Centripetal parameterisation avoids overshoot on the tight aisle corners.
   const curve = new CatmullRomCurve3(
     HAUL_WAYPOINTS.map(([x, z]) => new Vector3(x, 0, z)),
     true,
-    'catmullrom',
-    0.4
+    'centripetal'
   )
   const t = useRef(0)
   const previous = useRef(new Vector3(position[0], 0, position[2]))
 
   useFrame((_, delta) => {
-    if (reducedMotion || !ref.current) return
+    if (!ref.current) return
     const dt = Math.min(delta, 0.05)
-    const speed = 0.045 // curve-parameter units per second
+
+    if (reducedMotion) {
+      // Frozen at the spawn pose — legs stay neutral, worker faces the racks.
+      yaw.current = 0.9
+      ref.current.rotation.y = yaw.current
+      return
+    }
+
+    const speed = 0.04 // curve-parameter units per second
     t.current = (t.current + dt * speed) % 1
 
     const point = curve.getPointAt(t.current)
     const tangent = curve.getTangentAt(t.current)
+    const targetYaw = Math.atan2(tangent.x, tangent.z)
+
+    // Face the travel direction with shortest-path smoothing (no snapping on
+    // corners), and lean forward very slightly while walking.
+    yaw.current = lerpAngle(yaw.current, targetYaw, Math.min(1, dt * 8))
+    ref.current.rotation.y = yaw.current
+    ref.current.rotation.x = 0.025
+
     ref.current.position.set(point.x, 0, point.z)
-    ref.current.rotation.y = Math.atan2(tangent.x, tangent.z)
+    // Vertical step-bob: one dip per stride, in world space above the floor.
+    ref.current.position.y = Math.abs(Math.sin(walkPhase.current * 2)) * 0.02
 
     const moved = previous.current.distanceTo(point)
     previous.current.copy(point)
-    walkPhase.current += moved * 5.5
+    // Stride cadence ~1.8 leg-pair cycles/second at the walking speed above.
+    walkPhase.current += moved * 3
   })
 
   return (
