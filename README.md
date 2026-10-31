@@ -64,6 +64,18 @@ Rak A2 selected); the UI is built as real React components following
   its reorder threshold, grouped (one unread alert per product).
 - **Onboarding tour** — an animated spotlight tour introduces the app on first
   sign-in; replay it anytime from Settings.
+- **Stock opname (stocktake)** — guided physical count per location/level;
+  committing generates adjustment movements automatically inside one
+  transaction, with a full audit trail (reference `ST-…`).
+- **Restock proposal** — aggregates the reorder shortfall of every active
+  product with estimated cost and supplier, exportable as CSV.
+- **Product import** — paste or upload a CSV to upsert hundreds of products
+  by SKU (per-row error reporting, admin-only).
+- **Suppliers** — manage supplier contacts and link them to products and
+  stock-in movements; surfaced in the restock proposal.
+- **Barcode scan & print** — scan product barcodes with the device camera
+  (native BarcodeDetector) to fill the stock-in form, and print Code-128
+  labels from the product page.
 - **Bilingual (ID/EN)** — switch language from the header or profile menu;
   dates and number formats follow the active locale.
 - **Rate limiting, a11y, and E2E** — auth 20/min, movements 60/min, global
@@ -178,6 +190,8 @@ stockspace/
 - [x] Phase 4 — better-auth, server-side roles, reports + CSV, notifications
 - [x] Phase 5 — a11y pass, E2E smoke + axe, rate limiting, VPS guide
 - [x] Post-MVP polish — bilingual ID/EN, onboarding tour, delivery animation
+- [x] Post-MVP features — stock opname, restock proposal, product import,
+      suppliers, barcode scan & print
 - [x] Post-MVP animation pass — eased forklift choreography, box interaction
       feedback, proximity alerts, LOD + reduced-motion coverage
 - [x] Post-MVP features — workspace member management, admin product CRUD
