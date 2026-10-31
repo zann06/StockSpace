@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Save } from 'lucide-react'
 
 import { useCategories, useWarehouseData } from '@/api/hooks'
 import { useWorkspace } from '@/api/workspace-context'
 import { useI18n } from '@/i18n'
 import { restartTour } from '@/components/tour/AppTour'
+import { useCreateSupplier, useDeleteSupplier, useSuppliers } from '@/api/features'
 import { LanguageSwitch } from '@/components/ui/LanguageSwitch'
 import { Button } from '@/components/ui/Button'
 import { DemoBadge } from '@/components/common/DemoBadge'
@@ -107,6 +109,8 @@ export function SettingsPage() {
           </div>
         </Card>
 
+        <SuppliersCard />
+
         <MembersCard />
 
         <Card>
@@ -129,5 +133,83 @@ export function SettingsPage() {
         menunggu Fase 4.
       </p>
     </div>
+  )
+}
+
+/** Suppliers management — ADMIN writes, others view. */
+function SuppliersCard() {
+  const { t } = useI18n()
+  const suppliersQuery = useSuppliers()
+  const deleteSupplier = useDeleteSupplier()
+  const createSupplier = useCreateSupplier()
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const suppliers = suppliersQuery.data?.data ?? []
+
+  const addSupplier = (event: React.FormEvent) => {
+    event.preventDefault()
+    setError(null)
+    createSupplier.mutate(
+      { name: name.trim() },
+      {
+        onSuccess: () => setName(''),
+        onError: (cause) =>
+          setError(cause instanceof Error ? cause.message : 'Gagal menambah supplier.'),
+      }
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title={t('Kelola Supplier')}
+        subtitle={t('Pemasok produk — dipakai pada usulan restock.')}
+      />
+      <div className="flex flex-col gap-3 px-5 py-5">
+        <ul className="flex flex-col gap-2">
+          {suppliers.map((supplier) => (
+            <li key={supplier.id} className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-ink">{supplier.name}</p>
+                <p className="truncate text-xs text-muted">
+                  {supplier.contactName ?? '—'} · {supplier._count?.products ?? 0} {t('produk')}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => deleteSupplier.mutate(supplier.id)}
+                disabled={deleteSupplier.isPending || (supplier._count?.products ?? 0) > 0}
+                title={
+                  (supplier._count?.products ?? 0) > 0
+                    ? t('Supplier masih dipakai produk — lepas dulu relasinya.')
+                    : undefined
+                }
+              >
+                {t('Hapus')}
+              </Button>
+            </li>
+          ))}
+          {suppliers.length === 0 ? (
+            <li className="text-xs text-muted">{t('Belum ada supplier.')}</li>
+          ) : null}
+        </ul>
+
+        <form onSubmit={addSupplier} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t('Nama supplier baru')}
+            className="h-10 flex-1 rounded-control border border-line bg-surface px-3 text-sm text-ink"
+          />
+          <Button type="submit" disabled={createSupplier.isPending || name.trim() === ''}>
+            {t('Tambah')}
+          </Button>
+        </form>
+        {error ? <p className="text-xs font-semibold text-danger-fg">{error}</p> : null}
+      </div>
+    </Card>
   )
 }

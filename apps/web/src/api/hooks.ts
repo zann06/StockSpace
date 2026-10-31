@@ -152,6 +152,7 @@ export function useProduct(id: string | undefined) {
     queryFn: () =>
       apiFetch<{
         data: ApiProduct & {
+          supplier: { id: string; name: string } | null
           balances: {
             id: string
             level: number
@@ -433,7 +434,7 @@ export function useLowStockReport() {
 
 /** Downloads a CSV report (cookie-authenticated blob download). */
 export async function downloadReportCsv(
-  report: 'low-stock' | 'movements',
+  report: 'low-stock' | 'movements' | 'restock',
   params: MovementReportParams = {}
 ): Promise<void> {
   const query = new URLSearchParams({ report })

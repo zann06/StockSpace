@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ChevronLeft, ChevronRight, Download, FileBarChart } from 'lucide-react'
 
+import { useRestockReport } from '@/api/features'
 import {
   downloadReportCsv,
   useDashboardSummary,
@@ -35,6 +36,7 @@ export function ReportsPage() {
   const [exporting, setExporting] = useState<string | null>(null)
 
   const summaryQuery = useDashboardSummary()
+  const restockQuery = useRestockReport()
   const lowStockQuery = useLowStockReport()
   const productsQuery = useProductsList()
   const { isLoading: layoutLoading } = useWarehouseData()
@@ -53,7 +55,7 @@ export function ReportsPage() {
   const totalPages = Math.max(1, Math.ceil(totalMovements / REPORT_PAGE_SIZE))
   const showPagination = totalMovements > REPORT_PAGE_SIZE
 
-  const exportCsv = async (report: 'low-stock' | 'movements') => {
+  const exportCsv = async (report: 'low-stock' | 'movements' | 'restock') => {
     setExportError(null)
     setExporting(report)
     try {
@@ -84,6 +86,26 @@ export function ReportsPage() {
             >
               <Download aria-hidden className="h-3.5 w-3.5" />
               {exporting === 'low-stock' ? 'Menyiapkan…' : 'CSV Stok Menipis'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void exportCsv('restock')}
+              disabled={exporting !== null}
+              title={t('Unduh usulan pesanan ulang sebagai CSV')}
+            >
+              <Download aria-hidden className="h-3.5 w-3.5" />
+              {exporting === 'restock' ? 'Menyiapkan…' : 'CSV Restock'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void exportCsv('restock')}
+              disabled={exporting !== null}
+              title={t('Unduh usulan pesanan ulang sebagai CSV')}
+            >
+              <Download aria-hidden className="h-3.5 w-3.5" />
+              {exporting === 'restock' ? t('Menyiapkan…') : t('CSV Restock')}
             </Button>
             <Button
               size="sm"
@@ -173,6 +195,76 @@ export function ReportsPage() {
                       </td>
                     </tr>
                   ) : null}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        <Card className="overflow-hidden xl:col-span-2">
+          <CardHeader
+            title={t('Usulan Pesanan Ulang')}
+            subtitle={`${t('RestockQuery.count', {
+              count: restockQuery.data?.data.length ?? 0,
+            })} · ${t('Estimasi total')}: ${formatCurrency(restockQuery.data?.totalEstimatedCost ?? 0)}`}
+          />
+          {restockQuery.isLoading ? (
+            <p className="px-5 py-8 text-center text-sm font-semibold text-muted">
+              {t('Memuat laporan…')}
+            </p>
+          ) : (restockQuery.data?.data.length ?? 0) === 0 ? (
+            <p className="px-5 py-8 text-center text-xs text-muted">
+              {t('Tidak ada produk yang perlu dipesan ulang.')}
+            </p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto scroll-slim">
+              <table className="w-full min-w-[640px] text-left">
+                <thead>
+                  <tr className="border-b border-line text-[11px] font-bold tracking-wide text-muted uppercase">
+                    <th scope="col" className="px-5 py-2.5">
+                      {t('Produk')}
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      {t('Stok')}
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      {t('Usulan beli')}
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right">
+                      {t('Estimasi biaya')}
+                    </th>
+                    <th scope="col" className="px-5 py-2.5">
+                      {t('Supplier')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line/70">
+                  {(restockQuery.data?.data ?? []).map((item) => (
+                    <tr key={item.id} className="hover:bg-canvas/70">
+                      <td className="px-5 py-2.5">
+                        <Link
+                          to={`/inventory/products/${item.id}`}
+                          className="block truncate text-sm font-bold text-ink hover:text-primary"
+                        >
+                          {item.name}
+                        </Link>
+                        <span className="text-xs text-muted">{item.sku}</span>
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-sm text-muted">
+                        {formatNumber(item.quantity)}/{formatNumber(item.reorderThreshold)}
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-sm font-extrabold text-primary">
+                        {formatNumber(item.shortfall)} {item.unit}
+                      </td>
+                      <td className="px-5 py-2.5 text-right text-sm font-bold text-ink">
+                        {formatCurrency(item.estimatedCost)}
+                      </td>
+                      <td className="px-5 py-2.5 text-xs text-muted">
+                        {item.supplier ? item.supplier.name : '—'}
+                        {item.supplier?.contactName ? ` · ${item.supplier.contactName}` : ''}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

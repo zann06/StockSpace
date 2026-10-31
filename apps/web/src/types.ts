@@ -32,6 +32,8 @@ export interface Product {
   sku: string
   name: string
   category: string
+  /** Default supplier for restock suggestions (Phase: suppliers). */
+  supplierId?: string | null
   unit: string
   barcode: string | null
   costPrice: number
@@ -51,6 +53,7 @@ export interface Balance {
 }
 
 export type MovementType = 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'
+export type StocktakeStatus = 'OPEN' | 'COMPLETED' | 'CANCELLED'
 
 /** Product subset the 3D scene and location lists need (from the layout API). */
 export interface SceneProduct {
@@ -79,6 +82,8 @@ export interface Movement {
   destinationLocationId: string | null
   reference: string | null
   note: string | null
+  /** Supplier of received goods (stock-in only). */
+  supplierId?: string | null
   actor: string
   createdAt: string
 }

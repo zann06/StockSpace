@@ -21,6 +21,8 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProductDetailPage } from '@/pages/ProductDetailPage'
 import { ProductFormPage } from '@/pages/ProductFormPage'
 import { ReportsPage } from '@/pages/ReportsPage'
+import { StocktakeDetailPage } from '@/pages/StocktakeDetailPage'
+import { StocktakesPage } from '@/pages/StocktakesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TransactionsPage } from '@/pages/TransactionsPage'
 import { WarehousePage } from '@/pages/WarehousePage'
@@ -107,6 +109,8 @@ export default function App() {
                 <Route path="/inventory/products/new" element={<ProductFormPage />} />
                 <Route path="/inventory/products/:id" element={<ProductDetailPage />} />
                 <Route path="/inventory/products/:id/edit" element={<ProductFormPage />} />
+                <Route path="/stocktakes" element={<StocktakesPage />} />
+                <Route path="/stocktakes/:id" element={<StocktakeDetailPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route
                   path="/transactions/stock-in"

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import {
   ArrowLeftRight,
+  ClipboardList,
   BarChart3,
   Boxes,
   LayoutDashboard,
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/warehouse', label: 'Warehouse 3D', icon: Boxes },
   { to: '/inventory', label: 'Inventaris', icon: Package },
   { to: '/transactions', label: 'Transaksi', icon: ArrowLeftRight },
+  { to: '/stocktakes', label: 'Stock Opname', icon: ClipboardList },
   { to: '/reports', label: 'Laporan', icon: BarChart3 },
   { to: '/settings', label: 'Pengaturan', icon: Settings },
 ]

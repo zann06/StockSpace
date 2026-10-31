@@ -17,6 +17,8 @@ import { movementRoutes } from './routes/movements.js'
 import { notificationRoutes } from './routes/notifications.js'
 import { productRoutes } from './routes/products.js'
 import { reportRoutes } from './routes/reports.js'
+import { stocktakeRoutes } from './routes/stocktakes.js'
+import { supplierRoutes } from './routes/suppliers.js'
 import { categoryRoutes, locationRoutes, warehouseRoutes } from './routes/warehouse.js'
 import { workspaceRoutes } from './routes/workspaces.js'
 
@@ -139,6 +141,8 @@ export async function buildApp(options: { rateLimit?: boolean } = {}): Promise<F
     await scoped.register(movementRoutes)
     await scoped.register(notificationRoutes)
     await scoped.register(reportRoutes)
+    await scoped.register(supplierRoutes)
+    await scoped.register(stocktakeRoutes)
   })
 
   app.addHook('onClose', async () => {

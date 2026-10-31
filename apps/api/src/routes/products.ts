@@ -18,6 +18,7 @@ const createProductSchema = z.object({
   sku: z.string().trim().min(1).max(64),
   name: z.string().trim().min(1).max(200),
   categoryId: z.string().uuid().nullish(),
+  supplierId: z.string().uuid().nullish(),
   unit: z.string().trim().min(1).max(24).default('pcs'),
   barcode: z.string().trim().max(64).nullish(),
   costPrice: z.number().min(0).max(9_999_999_999_999).default(0),
@@ -36,6 +37,7 @@ function serializeMoney(value: { toNumber(): number } | number): number {
 }
 
 export async function productRoutes(app: FastifyInstance) {
+  const adminOnly = { preHandler: requireRole('ADMIN') }
   app.get('/api/products', async (request) => {
     const query = parseWith(listQuerySchema, request.query)
 
@@ -126,6 +128,7 @@ export async function productRoutes(app: FastifyInstance) {
         sku: body.sku,
         name: body.name,
         categoryId: body.categoryId ?? null,
+        supplierId: body.supplierId ?? null,
         unit: body.unit,
         barcode: body.barcode ?? null,
         costPrice: body.costPrice,
@@ -145,7 +148,12 @@ export async function productRoutes(app: FastifyInstance) {
 
     const product = await prisma.product.findFirst({
       where: { id, workspaceId: request.workspace.id },
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true } },
+        supplier: {
+          select: { id: true, name: true, contactName: true, email: true, phone: true },
+        },
+      },
     })
     if (!product) throw AppError.notFound(ERRORS.PRODUCT_NOT_FOUND, 'Produk tidak ditemukan.')
 
@@ -176,6 +184,101 @@ export async function productRoutes(app: FastifyInstance) {
     }
   })
 
+  /**
+   * Bulk import (ADMIN+): upsert by SKU — existing SKUs are updated, new ones
+   * created. Per-row validation; bad rows are reported, good rows commit.
+   */
+  app.post('/api/products/import', adminOnly, async (request) => {
+    const body = parseWith(
+      z
+        .object({
+          rows: z
+            .array(
+              z.object({
+                sku: z.string().trim().min(1).max(64),
+                name: z.string().trim().min(1).max(200),
+                category: z.string().trim().max(120).nullish(),
+                unit: z.string().trim().max(24).nullish(),
+                barcode: z.string().trim().max(64).nullish(),
+                costPrice: z.number().min(0).max(9_999_999_999_999).nullish(),
+                reorderThreshold: z.number().int().min(0).nullish(),
+                description: z.string().trim().max(2000).nullish(),
+              })
+            )
+            .min(1)
+            .max(1000),
+        })
+        .strict(),
+      request.body
+    )
+
+    const categories = await prisma.category.findMany({
+      where: { workspaceId: request.workspace.id },
+      select: { id: true, name: true },
+    })
+    const categoryByName = new Map(categories.map((c) => [c.name.toLowerCase(), c.id]))
+
+    const created: string[] = []
+    const updated: string[] = []
+    const errors: { row: number; message: string }[] = []
+
+    for (const [index, row] of body.rows.entries()) {
+      try {
+        if (row.category && !categoryByName.has(row.category.toLowerCase())) {
+          throw new Error(`Kategori "${row.category}" belum ada — buat dulu di Pengaturan.`)
+        }
+        const categoryId = row.category
+          ? (categoryByName.get(row.category.toLowerCase()) ?? null)
+          : null
+        const existing = await prisma.product.findFirst({
+          where: { workspaceId: request.workspace.id, sku: row.sku },
+          select: { id: true },
+        })
+        if (existing) {
+          await prisma.product.update({
+            where: { id: existing.id },
+            data: {
+              name: row.name,
+              categoryId,
+              unit: row.unit ?? undefined,
+              barcode: row.barcode ?? null,
+              costPrice: row.costPrice ?? undefined,
+              reorderThreshold: row.reorderThreshold ?? undefined,
+              description: row.description ?? null,
+            },
+          })
+          updated.push(row.sku)
+        } else {
+          await prisma.product.create({
+            data: {
+              workspaceId: request.workspace.id,
+              sku: row.sku,
+              name: row.name,
+              categoryId,
+              unit: row.unit ?? 'pcs',
+              barcode: row.barcode ?? null,
+              costPrice: row.costPrice ?? 0,
+              reorderThreshold: row.reorderThreshold ?? 0,
+              description: row.description ?? null,
+            },
+          })
+          created.push(row.sku)
+        }
+      } catch (error) {
+        errors.push({
+          row: index + 1,
+          message: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+
+    request.log.info(
+      { created: created.length, updated: updated.length, failed: errors.length },
+      'products imported'
+    )
+    return { data: { created, updated, errors } }
+  })
+
   app.patch('/api/products/:id', { preHandler: requireRole('ADMIN') }, async (request) => {
     const { id } = parseWith(z.object({ id: z.string().uuid() }), request.params)
     const body = parseWith(updateProductSchema, request.body)
@@ -203,6 +306,7 @@ export async function productRoutes(app: FastifyInstance) {
       data: {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.categoryId !== undefined ? { categoryId: body.categoryId ?? null } : {}),
+        ...(body.supplierId !== undefined ? { supplierId: body.supplierId ?? null } : {}),
         ...(body.unit !== undefined ? { unit: body.unit } : {}),
         ...(body.barcode !== undefined ? { barcode: body.barcode ?? null } : {}),
         ...(body.costPrice !== undefined ? { costPrice: body.costPrice } : {}),

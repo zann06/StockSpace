@@ -24,6 +24,8 @@ export interface MovementInput {
   destinationLevel?: number | null
   reference?: string | null
   note?: string | null
+  /** Optional supplier for stock-ins — validated against the workspace. */
+  supplierId?: string | null
   actorId: string
 }
 
@@ -117,6 +119,7 @@ async function createMovement(
       destinationLevel: input.destinationLevel ?? null,
       reference: input.reference ?? null,
       note: input.note ?? null,
+      supplierId: input.supplierId ?? null,
       actorId: input.actorId,
     },
   })

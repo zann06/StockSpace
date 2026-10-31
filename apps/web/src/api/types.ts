@@ -190,4 +190,6 @@ export interface MovementPayload {
   destinationLevel?: number | null
   reference?: string | null
   note?: string | null
+  /** Stock-in only: supplier of the received goods. */
+  supplierId?: string | null
 }

@@ -383,6 +383,73 @@ const en: Record<string, string> = {
   'SKU tidak dapat diubah.': 'The SKU cannot be changed.',
   'Contoh: Laptop ASUS TUF F15': 'Example: Laptop ASUS TUF F15',
   'Nilai terlalu besar.': 'Value is too large.',
+  'Stock Opname': 'Stock Opname',
+  'Hitung stok fisik per lokasi, lalu sistem membuat penyesuaian otomatis.':
+    'Count physical stock per location and the system generates adjustments automatically.',
+  'Mulai Stock Opname': 'Start Stocktake',
+  'Snapshot stok saat ini akan dibuat sebagai baris hitung untuk gudang aktif.':
+    'A snapshot of current stock will be created as count lines for the active warehouse.',
+  'mis. Opname akhir bulan': 'e.g. Month-end count',
+  'Belum ada stock opname': 'No stocktakes yet',
+  'Mulai stock opname pertama untuk mencocokkan stok sistem dengan hitungan fisik.':
+    'Start your first stocktake to reconcile system stock with the physical count.',
+  'baris hitung': 'count lines',
+  Berlangsung: 'In progress',
+  Dibatalkan: 'Cancelled',
+  Terhitung: 'Counted',
+  selisih: 'differences',
+  'Selesaikan & Sesuaikan': 'Finish & Adjust',
+  'Isi minimal satu baris hitung terlebih dahulu.': 'Fill in at least one count line first.',
+  Batalkan: 'Cancel',
+  'Penyesuaian dicatat:': 'Adjustments recorded:',
+  'baris dilewati': 'lines skipped',
+  'Stock opname tidak ditemukan.': 'Stocktake not found.',
+  Kembali: 'Back',
+  Tercatat: 'Recorded',
+  'Hitungan Fisik': 'Physical count',
+  Cocok: 'Match',
+  'Baris yang tidak diisi akan dilewati — stoknya tidak berubah saat penyesuaian dijalankan.':
+    'Unfilled lines are skipped — their stock stays unchanged when the adjustment runs.',
+  'Usulan Pesanan Ulang': 'Restock Proposal',
+  'RestockQuery.count': '{count} products to reorder',
+  'Estimasi total': 'Total estimate',
+  'Tidak ada produk yang perlu dipesan ulang.': 'No products need reordering.',
+  'Usulan beli': 'Suggested buy',
+  'Estimasi biaya': 'Estimated cost',
+  'Unduh usulan pesanan ulang sebagai CSV': 'Download the restock proposal as CSV',
+  'CSV Restock': 'Restock CSV',
+  'Import Produk CSV': 'Import products from CSV',
+  'Import CSV': 'Import CSV',
+  'Pilih file CSV…': 'Choose a CSV file…',
+  'CSV harus berisi header dan minimal satu baris data.':
+    'The CSV needs a header and at least one data row.',
+  Dibuat: 'Created',
+  Gagal: 'Failed',
+  Baris: 'Row',
+  'Mengimpor…': 'Importing…',
+  'Impor Sekarang': 'Import now',
+  'Kelola Supplier': 'Manage Suppliers',
+  'Pemasok produk — dipakai pada usulan restock.':
+    'Product suppliers — used in the restock proposal.',
+  'Belum ada supplier.': 'No suppliers yet.',
+  'Nama supplier baru': 'New supplier name',
+  Tambah: 'Add',
+  Hapus: 'Delete',
+  'Supplier masih dipakai produk — lepas dulu relasinya.':
+    'Supplier is still linked to products — unlink them first.',
+  Supplier: 'Supplier',
+  'Tanpa supplier': 'No supplier',
+  'Cetak Label': 'Print Label',
+  'Pindai Barcode': 'Scan Barcode',
+  'Pemindai barcode tidak didukung browser ini — masukkan SKU secara manual.':
+    'Barcode scanning is not supported in this browser — enter the SKU manually.',
+  'Akses kamera ditolak — masukkan SKU secara manual.':
+    'Camera access denied — enter the SKU manually.',
+  'Arahkan kamera ke barcode produk. Hasil pindaian otomatis mengisi kolom produk.':
+    'Point the camera at the product barcode. The scan fills the product field automatically.',
+  'tidak cocok dengan produk mana pun.': 'did not match any product.',
+  'Supplier baru': 'New supplier',
+  'SKU dan nama wajib diisi.': 'SKU and name are required.',
 }
 
 const CATALOGS: Record<Lang, Record<string, string>> = { id: {}, en }

@@ -10,6 +10,7 @@ import {
 
 import type { MovementType } from '@/types'
 import { useProduct } from '@/api/hooks'
+import { printBarcodeLabels } from '@/lib/barcode'
 import { useWorkspace } from '@/api/workspace-context'
 import { roleAtLeast } from '@/lib/roles'
 import { Badge } from '@/components/ui/Badge'
@@ -122,6 +123,14 @@ export function ProductDetailPage() {
           <div className="flex items-center gap-2">
             {canManageProducts ? (
               <Link to={`/inventory/products/${product.id}/edit`}>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    printBarcodeLabels([{ sku: product.sku, name: product.name }], { copies: 2 })
+                  }
+                >
+                  {t('Cetak Label')}
+                </Button>
                 <Button variant="secondary">{t('Edit Produk')}</Button>
               </Link>
             ) : null}
@@ -166,6 +175,13 @@ export function ProductDetailPage() {
         {product.barcode ? (
           <p className="mt-2 text-xs text-muted">
             {t('Barcode')}: <span className="font-semibold text-ink">{product.barcode}</span>
+            {product.supplier ? (
+              <span>
+                {' · '}
+                {t('Supplier')}:{' '}
+                <span className="font-semibold text-ink">{product.supplier.name}</span>
+              </span>
+            ) : null}
           </p>
         ) : null}
       </Card>

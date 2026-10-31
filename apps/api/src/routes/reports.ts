@@ -115,8 +115,106 @@ export async function reportRoutes(app: FastifyInstance) {
   })
 
   /** CSV export: ?report=low-stock|movements (+ the same filters). */
+  /** Restock proposal: aggregate shortfall of active products under threshold. */
+  app.get('/api/reports/restock', async (request) => {
+    const [balanceGroups, products] = await Promise.all([
+      prisma.inventoryBalance.groupBy({
+        by: ['productId'],
+        where: { product: { workspaceId: request.workspace.id } },
+        _sum: { quantity: true },
+      }),
+      prisma.product.findMany({
+        where: { workspaceId: request.workspace.id, active: true },
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          unit: true,
+          reorderThreshold: true,
+          costPrice: true,
+          supplier: {
+            select: { id: true, name: true, contactName: true, email: true, phone: true },
+          },
+        },
+        orderBy: { name: 'asc' },
+      }),
+    ])
+    const totals = new Map(
+      balanceGroups.map((group) => [group.productId, group._sum.quantity ?? 0])
+    )
+
+    const items = products
+      .map((product) => ({
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        unit: product.unit,
+        quantity: totals.get(product.id) ?? 0,
+        reorderThreshold: product.reorderThreshold,
+        shortfall: Math.max(0, product.reorderThreshold - (totals.get(product.id) ?? 0)),
+        estimatedCost:
+          Math.max(0, product.reorderThreshold - (totals.get(product.id) ?? 0)) *
+          Number(product.costPrice),
+        supplier: product.supplier,
+      }))
+      .filter((item) => item.shortfall > 0)
+      .sort((a, b) => b.estimatedCost - a.estimatedCost)
+
+    return {
+      data: items,
+      totalEstimatedCost: items.reduce((sum, item) => sum + item.estimatedCost, 0),
+    }
+  })
+
   app.get('/api/reports/export.csv', async (request, reply) => {
     const report = (request.query as { report?: string }).report ?? 'movements'
+
+    if (report === 'restock') {
+      const balanceGroups = await prisma.inventoryBalance.groupBy({
+        by: ['productId'],
+        where: { product: { workspaceId: request.workspace.id } },
+        _sum: { quantity: true },
+      })
+      const totals = new Map(
+        balanceGroups.map((group) => [group.productId, group._sum.quantity ?? 0])
+      )
+      const products = await prisma.product.findMany({
+        where: { workspaceId: request.workspace.id, active: true },
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          unit: true,
+          reorderThreshold: true,
+          costPrice: true,
+          supplier: { select: { name: true } },
+        },
+        orderBy: { name: 'asc' },
+      })
+      const rows: (string | number | null)[][] = [
+        ['sku', 'produk', 'unit', 'stok', 'ambang', 'usulan_beli', 'estimasi_biaya', 'supplier'],
+        ...products
+          .map((product) => {
+            const shortfall = Math.max(0, product.reorderThreshold - (totals.get(product.id) ?? 0))
+            return [
+              product.sku,
+              product.name,
+              product.unit,
+              totals.get(product.id) ?? 0,
+              product.reorderThreshold,
+              shortfall,
+              shortfall * Number(product.costPrice),
+              product.supplier?.name ?? '',
+            ]
+          })
+          .filter((row) => Number(row[5]) > 0),
+      ]
+      return csvResponse(
+        reply,
+        `stockspace-restock-${new Date().toISOString().slice(0, 10)}.csv`,
+        rows
+      )
+    }
 
     if (report === 'low-stock') {
       // Reuse the JSON endpoint's computation by calling the same logic inline.

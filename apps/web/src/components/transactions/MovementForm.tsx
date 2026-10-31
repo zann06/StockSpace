@@ -3,6 +3,8 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { z } from 'zod'
 
 import type { MovementKind } from '@/api/hooks'
+import { BarcodeScanner } from '@/components/common/BarcodeScanner'
+import { useSuppliers } from '@/api/features'
 import { useCreateMovement, useProductsList, useWarehouseData } from '@/api/hooks'
 import { emitMovement } from '@/lib/events'
 import { Button } from '@/components/ui/Button'
@@ -63,6 +65,7 @@ const KIND_META: Record<
 
 interface FormState {
   productId: string
+  supplierId: string
   quantity: string
   sourceLocationId: string
   sourceLevel: string
@@ -74,6 +77,7 @@ interface FormState {
 
 const EMPTY_STATE: FormState = {
   productId: '',
+  supplierId: '',
   quantity: '',
   sourceLocationId: '',
   sourceLevel: '1',
@@ -90,11 +94,14 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
 
   const productsQuery = useProductsList()
   const { locations, balances } = useWarehouseData()
   const mutation = useCreateMovement(kind)
 
+  const suppliersQuery = useSuppliers()
+  const suppliers = suppliersQuery.data?.data ?? []
   const products = productsQuery.data?.data ?? []
   const selectedProduct = products.find((product) => product.id === form.productId)
 
@@ -180,6 +187,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
         destinationLevel: meta.needsDestination ? Number(form.destinationLevel) : null,
         reference: form.reference.trim() || null,
         note: form.note.trim() || null,
+        supplierId: kind === 'stock-in' && form.supplierId ? form.supplierId : null,
       })
       setSuccess(
         `${t('Transaksi berhasil dicatat')}${result.data.reference ? ` (ref: ${result.data.reference})` : ''}. ${t('Saldo dan riwayat telah diperbarui.')}`
@@ -223,9 +231,21 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
       >
         {/* Product */}
         <div className="md:col-span-2">
-          <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
-            Produk <span className="text-danger-fg">*</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center justify-between text-xs font-bold text-ink">
+              <label htmlFor="movement-product" className="cursor-pointer">
+                Produk <span className="text-danger-fg">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary-soft"
+              >
+                Pindai Barcode
+              </button>
+            </span>
             <select
+              id="movement-product"
               value={form.productId}
               onChange={(event) => setField('productId', event.target.value)}
               className={inputClass('productId')}
@@ -238,7 +258,7 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           {fieldErrors.productId ? (
             <p className="mt-1 text-xs font-semibold text-danger-fg">{fieldErrors.productId}</p>
           ) : null}
@@ -288,18 +308,37 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
 
         {/* Quantity */}
         <div>
-          <label className="flex flex-col gap-1.5 text-xs font-bold text-ink">
+          <div className="flex flex-col gap-1.5 text-xs font-bold text-ink">
+            {kind === 'stock-in' ? (
+              <span className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold">Supplier (opsional)</span>
+                <select
+                  value={form.supplierId}
+                  onChange={(event) => setField('supplierId', event.target.value)}
+                  className="h-10 w-full rounded-control border border-line bg-surface px-3 text-sm text-ink"
+                >
+                  <option value="">— Tanpa supplier —</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            ) : null}
             Jumlah {kind === 'adjustment' ? '(± untuk koreksi)' : ''}{' '}
             <span className="text-danger-fg">*</span>
             <input
+              id="movement-quantity"
               type="number"
               value={form.quantity}
               onChange={(event) => setField('quantity', event.target.value)}
               className={inputClass('quantity')}
               placeholder={kind === 'adjustment' ? 'mis. -2 / 5' : 'mis. 10'}
+              aria-label="Jumlah"
               aria-invalid={!!fieldErrors.quantity}
             />
-          </label>
+          </div>
           {fieldErrors.quantity ? (
             <p className="mt-1 text-xs font-semibold text-danger-fg">{fieldErrors.quantity}</p>
           ) : null}
@@ -356,6 +395,23 @@ export function MovementForm({ kind }: { kind: MovementKind }) {
           <CheckCircle2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
           {success}
         </p>
+      ) : null}
+      {scanning ? (
+        <BarcodeScanner
+          onClose={() => setScanning(false)}
+          onDetect={(code) => {
+            setScanning(false)
+            const match = products.find((product) => product.barcode === code.trim())
+            if (match) {
+              setForm((previous) => ({ ...previous, productId: match.id }))
+              setField('productId', match.id)
+            } else {
+              setFailure(
+                `${t('Barcode')} "${code.trim()}" ${t('tidak cocok dengan produk mana pun.')}`
+              )
+            }
+          }}
+        />
       ) : null}
       {failure ? (
         <p className="mt-4 flex items-start gap-2 rounded-control bg-danger-soft px-3.5 py-3 text-xs font-semibold text-danger-fg">

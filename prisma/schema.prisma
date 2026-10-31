@@ -39,16 +39,17 @@ enum NotificationType {
 // (https://www.better-auth.com/docs/concepts/database) — mapped to our
 // PascalCase model names via the prisma adapter's modelMapping.
 model User {
-  id             String    @id @default(uuid())
+  id             String            @id @default(uuid())
   name           String
-  email          String    @unique
-  emailVerified  Boolean   @default(false)
+  email          String            @unique
+  emailVerified  Boolean           @default(false)
   image          String?
-  authProviderId String?   @unique
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  authProviderId String?           @unique
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   memberships    WorkspaceMember[]
   movements      StockMovement[]   @relation("MovementActor")
+  stocktakes     Stocktake[]
   notifications  Notification[]
   accounts       Account[]
   sessions       Session[]
@@ -100,17 +101,19 @@ model Verification {
 }
 
 model Workspace {
-  id        String   @id @default(uuid())
-  name      String
-  currency  String   @default("IDR")
-  timezone  String   @default("Asia/Jakarta")
-  createdAt DateTime @default(now())
-  members    WorkspaceMember[]
-  warehouses Warehouse[]
-  categories Category[]
-  products   Product[]
-  movements  StockMovement[]
+  id            String            @id @default(uuid())
+  name          String
+  currency      String            @default("IDR")
+  timezone      String            @default("Asia/Jakarta")
+  createdAt     DateTime          @default(now())
+  members       WorkspaceMember[]
+  warehouses    Warehouse[]
+  categories    Category[]
+  products      Product[]
+  movements     StockMovement[]
   notifications Notification[]
+  suppliers     Supplier[]
+  stocktakes    Stocktake[]
 }
 
 model WorkspaceMember {
@@ -127,54 +130,56 @@ model WorkspaceMember {
 }
 
 model Warehouse {
-  id          String @id @default(uuid())
+  id          String            @id @default(uuid())
   workspaceId String
   name        String
   code        String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   zones       Zone[]
   locations   StorageLocation[]
+  stocktakes  Stocktake[]
 
   @@unique([workspaceId, code])
 }
 
 model Zone {
-  id          String @id @default(uuid())
+  id          String            @id @default(uuid())
   warehouseId String
   name        String
   code        String
-  warehouse   Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   locations   StorageLocation[]
 
   @@unique([warehouseId, code])
 }
 
 model StorageLocation {
-  id               String       @id @default(uuid())
-  warehouseId      String
-  zoneId           String?
-  type             LocationType
-  code             String
-  label            String
+  id                String             @id @default(uuid())
+  warehouseId       String
+  zoneId            String?
+  type              LocationType
+  code              String
+  label             String
   // Persisted layout coordinates — the 3D scene renders from these.
-  x                Float
-  z                Float
-  rotation         Float        @default(0)
-  capacity         Int?
-  levels           Int          @default(1)
-  active           Boolean      @default(true)
-  createdAt        DateTime     @default(now())
-  warehouse        Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  zone             Zone?        @relation(fields: [zoneId], references: [id], onDelete: SetNull)
-  balances         InventoryBalance[]
-  outgoingMovements StockMovement[] @relation("MovementSource")
-  incomingMovements StockMovement[] @relation("MovementDestination")
+  x                 Float
+  z                 Float
+  rotation          Float              @default(0)
+  capacity          Int?
+  levels            Int                @default(1)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  zone              Zone?              @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  balances          InventoryBalance[]
+  outgoingMovements StockMovement[]    @relation("MovementSource")
+  incomingMovements StockMovement[]    @relation("MovementDestination")
+  stocktakeLines    StocktakeLine[]
 
   @@unique([warehouseId, code])
 }
 
 model Category {
-  id          String @id @default(uuid())
+  id          String    @id @default(uuid())
   workspaceId String
   name        String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -184,24 +189,27 @@ model Category {
 }
 
 model Product {
-  id              String   @id @default(uuid())
-  workspaceId     String
-  sku             String
-  name            String
-  categoryId      String?
-  unit            String   @default("pcs")
-  barcode         String?
+  id               String             @id @default(uuid())
+  workspaceId      String
+  sku              String
+  name             String
+  categoryId       String?
+  supplierId       String?
+  unit             String             @default("pcs")
+  barcode          String?
   // Money is Decimal(14,2) — never floating point.
-  costPrice       Decimal  @default(0) @db.Decimal(14, 2)
-  reorderThreshold Int     @default(0)
-  description     String?
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  balances        InventoryBalance[]
-  movements       StockMovement[]
+  costPrice        Decimal            @default(0) @db.Decimal(14, 2)
+  reorderThreshold Int                @default(0)
+  description      String?
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category         Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplier         Supplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  balances         InventoryBalance[]
+  movements        StockMovement[]
+  stocktakeLines   StocktakeLine[]
 
   @@unique([workspaceId, sku])
   @@index([workspaceId, active])
@@ -209,15 +217,15 @@ model Product {
 }
 
 model InventoryBalance {
-  id               String   @id @default(uuid())
-  productId        String
-  locationId       String
+  id         String          @id @default(uuid())
+  productId  String
+  locationId String
   // Shelf level inside a rack (1 = bottom); flat rows (staging/packing) use 1.
-  level            Int      @default(1)
-  quantity         Int
-  updatedAt        DateTime @updatedAt
-  product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  location         StorageLocation  @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  level      Int             @default(1)
+  quantity   Int
+  updatedAt  DateTime        @updatedAt
+  product    Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location   StorageLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@unique([productId, locationId, level])
   @@index([locationId])
@@ -225,25 +233,27 @@ model InventoryBalance {
 }
 
 model StockMovement {
-  id                   String       @id @default(uuid())
-  workspaceId          String
-  productId            String
-  type                 MovementType
+  id                    String           @id @default(uuid())
+  workspaceId           String
+  productId             String
+  type                  MovementType
   // Positive for IN/OUT/TRANSFER; signed delta for ADJUSTMENT.
-  quantity             Int
-  sourceLocationId     String?
+  quantity              Int
+  sourceLocationId      String?
   destinationLocationId String?
-  sourceLevel          Int?
-  destinationLevel     Int?
-  reference            String?
-  note                 String?
-  actorId              String
-  createdAt            DateTime     @default(now())
-  workspace            Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  product              Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
-  sourceLocation       StorageLocation? @relation("MovementSource", fields: [sourceLocationId], references: [id], onDelete: SetNull)
-  destinationLocation  StorageLocation? @relation("MovementDestination", fields: [destinationLocationId], references: [id], onDelete: SetNull)
-  actor                User             @relation("MovementActor", fields: [actorId], references: [id], onDelete: Restrict)
+  sourceLevel           Int?
+  destinationLevel      Int?
+  reference             String?
+  note                  String?
+  supplierId            String?
+  actorId               String
+  createdAt             DateTime         @default(now())
+  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  product               Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  sourceLocation        StorageLocation? @relation("MovementSource", fields: [sourceLocationId], references: [id], onDelete: SetNull)
+  destinationLocation   StorageLocation? @relation("MovementDestination", fields: [destinationLocationId], references: [id], onDelete: SetNull)
+  supplier              Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  actor                 User             @relation("MovementActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, type])
@@ -265,4 +275,61 @@ model Notification {
   user        User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, readAt])
+}
+
+enum StocktakeStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+model Supplier {
+  id          String          @id @default(uuid())
+  workspaceId String
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  products    Product[]
+  movements   StockMovement[]
+
+  @@index([workspaceId])
+}
+
+model Stocktake {
+  id          String          @id @default(uuid())
+  workspaceId String
+  warehouseId String
+  status      StocktakeStatus @default(OPEN)
+  note        String?
+  createdById String
+  createdAt   DateTime        @default(now())
+  completedAt DateTime?
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  warehouse   Warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  lines       StocktakeLine[]
+
+  @@index([workspaceId, status])
+  @@index([warehouseId])
+}
+
+model StocktakeLine {
+  id          String          @id @default(uuid())
+  stocktakeId String
+  productId   String
+  locationId  String
+  level       Int             @default(1)
+  expectedQty Int
+  countedQty  Int?
+  stocktake   Stocktake       @relation(fields: [stocktakeId], references: [id], onDelete: Cascade)
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location    StorageLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([stocktakeId, productId, locationId, level])
+  @@index([stocktakeId])
 }

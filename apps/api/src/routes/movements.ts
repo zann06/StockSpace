@@ -18,6 +18,8 @@ const movementBodySchema = z
     destinationLevel: z.number().int().min(1).max(10).nullish(),
     reference: z.string().trim().max(64).nullish(),
     note: z.string().trim().max(1000).nullish(),
+    // Stock-in only: optional supplier of the received goods.
+    supplierId: z.string().uuid().nullish(),
   })
   .strict()
 
@@ -30,6 +32,23 @@ const listQuerySchema = z.object({
 })
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
+/** Validate an optional supplier for stock-ins against the active workspace. */
+async function resolveSupplierId(
+  tx: Tx,
+  workspaceId: string,
+  supplierId?: string | null
+): Promise<string | null> {
+  if (!supplierId) return null
+  const supplier = await tx.supplier.findFirst({
+    where: { id: supplierId, workspaceId },
+    select: { id: true },
+  })
+  if (!supplier) {
+    throw AppError.notFound('SUPPLIER_NOT_FOUND', 'Supplier tidak ditemukan di workspace ini.')
+  }
+  return supplier.id
+}
 
 /**
  * Resolve the owning warehouse of the movement's location (source preferred,
@@ -84,6 +103,7 @@ async function applyMovement(
       destinationLevel: body.destinationLevel ?? null,
       reference: body.reference ?? null,
       note: body.note ?? null,
+      supplierId: kind === 'IN' ? await resolveSupplierId(tx, workspaceId, body.supplierId) : null,
       actorId: request.user.id,
     }
     return operation(tx, workspaceId, warehouseId, input)
