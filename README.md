@@ -28,11 +28,12 @@ box to its rack, and see the dashboard update:
 | | |
 | --- | --- |
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Warehouse 3D](docs/screenshots/warehouse.png) |
-| ![Inventory](docs/screenshots/inventory.png) | ![Login](docs/screenshots/login.png) |
+| ![Inventory](docs/screenshots/inventory.png) | ![Stock opname](docs/screenshots/stocktakes.png) |
+| ![Reports](docs/screenshots/reports.png) | ![Login](docs/screenshots/login.png) |
 
-*Captured with Playwright from the running app (dashboard, and Warehouse 3D with
-Rak A2 selected); the UI is built as real React components following
-`design-reference.png`.*
+*Captured with Playwright against the live demo (Warehouse 3D shows the
+fly-to focus on Rak A1 with the other racks dimmed); the UI is built as real
+React components following `design-reference.png`.*
 
 ## Features
 
