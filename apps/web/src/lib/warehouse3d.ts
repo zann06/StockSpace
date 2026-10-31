@@ -2585,3 +2585,36 @@ export class ParticlePool {
     this.activeCount = 0
   }
 }
+
+/**
+ * Focus-mode dimming: traverse a group and make every material translucent.
+ * Restoring sets opacity back to 1 and disables transparency (opaque path).
+ * Uses `needsUpdate` so the renderer recompiles the material program.
+ */
+export function applyGroupDim(root: unknown, dimmed: boolean): void {
+  if (!root || typeof root !== 'object' || !('traverse' in root)) return
+  const group = root as {
+    traverse: (callback: (child: { material?: unknown; castShadow?: boolean }) => void) => void
+  }
+  group.traverse((child) => {
+    const material = child.material as
+      | { transparent?: boolean; opacity?: number; depthWrite?: boolean; needsUpdate?: boolean }
+      | Array<{
+          transparent?: boolean
+          opacity?: number
+          depthWrite?: boolean
+          needsUpdate?: boolean
+        }>
+      | undefined
+    if (!material) return
+    const list = Array.isArray(material) ? material : [material]
+    for (const mat of list) {
+      const nextOpacity = dimmed ? 0.15 : 1
+      if (mat.transparent === dimmed && mat.opacity === nextOpacity) continue
+      mat.transparent = dimmed
+      mat.opacity = nextOpacity
+      mat.depthWrite = !dimmed
+      mat.needsUpdate = true
+    }
+  })
+}

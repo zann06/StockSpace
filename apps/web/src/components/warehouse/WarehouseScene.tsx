@@ -22,6 +22,9 @@ import type {
   ZoomCommand,
 } from '@/types'
 import { formatNumber } from '@/lib/format'
+import { applyGroupDim } from '@/lib/warehouse3d'
+import { WarehouseSetDressing } from '@/components/warehouse/WarehouseSetDressing'
+import { WarehouseWorkers } from '@/components/warehouse/WarehouseWorkers'
 import { consumePendingMovement, onMovement, type MovementEvent } from '@/lib/events'
 import { useI18n } from '@/i18n'
 import {
@@ -146,6 +149,8 @@ interface ObjectBaseProps {
   status: OccupancyStatus
   selected: boolean
   hovered: boolean
+  /** True while another location is focused — the rack renders translucent. */
+  dimmed: boolean
   onSelect: (id: string | null) => void
   onHover: (id: string | null) => void
 }
@@ -361,6 +366,7 @@ function RackObject({
   status,
   selected,
   hovered,
+  dimmed,
   onSelect,
   onHover,
 }: RackObjectProps) {
@@ -368,7 +374,13 @@ function RackObject({
     () => rackBoxes(location.id, balances, levelFilter),
     [location.id, balances, levelFilter]
   )
+  const rackGroupRef = useRef<Group>(null)
   const uprightColor = selected ? '#6546f5' : hovered ? '#7f8cc4' : '#9aa6c8'
+
+  // Focus mode: another location is selected — turn this rack translucent.
+  useEffect(() => {
+    applyGroupDim(rackGroupRef.current, dimmed)
+  }, [dimmed])
 
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
@@ -382,6 +394,7 @@ function RackObject({
 
   return (
     <group
+      ref={rackGroupRef}
       position={[location.x, 0, location.z]}
       rotation-y={location.rotation}
       onClick={handleClick}
@@ -454,9 +467,15 @@ function AreaObject({
   status,
   selected,
   hovered,
+  dimmed,
   onSelect,
   onHover,
 }: AreaObjectProps) {
+  const areaGroupRef = useRef<Group>(null)
+
+  useEffect(() => {
+    applyGroupDim(areaGroupRef.current, dimmed)
+  }, [dimmed])
   const isStaging = platform === 'staging'
   const platformSize: [number, number, number] = isStaging ? STAGING_PLATFORM : PACKING_PLATFORM
   const platformY = platformSize[1] / 2
@@ -476,6 +495,7 @@ function AreaObject({
 
   return (
     <group
+      ref={areaGroupRef}
       position={[location.x, 0, location.z]}
       rotation-y={location.rotation}
       onClick={handleClick}
@@ -1582,6 +1602,93 @@ function Forklift({
   )
 }
 
+/**
+ * Fly-to focus: when a location is selected, the camera glides to a computed
+ * viewpoint (outward offset toward the room centre) and the orbit target locks
+ * onto the rack. Any user input cancels the flight. Reduced motion jumps
+ * instantly instead of animating.
+ */
+function FlyToCamera({
+  locations,
+  selectedLocationId,
+  viewMode,
+  reducedMotion,
+}: {
+  locations: StorageLocation[]
+  selectedLocationId: string | null
+  viewMode: ViewMode
+  reducedMotion: boolean
+}) {
+  const camera = useThree((state) => state.camera)
+  const controls = useThree((state) => state.controls) as OrbitControlsImpl | null
+
+  const flight = useRef<{
+    startedAt: number
+    fromPos: Vector3
+    toPos: Vector3
+    fromTarget: Vector3
+    toTarget: Vector3
+  } | null>(null)
+
+  // User grabbing the controls cancels the flight.
+  useEffect(() => {
+    const controlsImpl = controls
+    if (!controlsImpl) return
+    const cancel = () => {
+      flight.current = null
+    }
+    controlsImpl.addEventListener('start', cancel)
+    return () => controlsImpl.removeEventListener('start', cancel)
+  }, [controls])
+
+  useEffect(() => {
+    if (!controls) return
+    if (!selectedLocationId) {
+      flight.current = null
+      return
+    }
+    const location = locations.find((item) => item.id === selectedLocationId)
+    if (!location) return
+
+    const target = new Vector3(location.x, 1.15, location.z)
+    // Viewpoint: push outward from the room centre so the camera never ends up
+    // inside a neighbouring rack.
+    const outward = new Vector3(location.x, 0, location.z).normalize().multiplyScalar(4.6)
+    const destination = new Vector3(location.x + outward.x + 0.9, 3.6, location.z + outward.z + 2.6)
+
+    if (reducedMotion) {
+      camera.position.copy(destination)
+      controls.target.copy(target)
+      controls.update()
+      return
+    }
+
+    flight.current = {
+      startedAt: 0,
+      fromPos: camera.position.clone(),
+      toPos: destination,
+      fromTarget: controls.target.clone(),
+      toTarget: target,
+    }
+  }, [selectedLocationId, locations, controls, camera, reducedMotion, viewMode])
+
+  useFrame((state) => {
+    const active = flight.current
+    if (!active || !controls) return
+    if (active.startedAt === 0) active.startedAt = state.clock.elapsedTime
+
+    const progress = Math.min(1, (state.clock.elapsedTime - active.startedAt) / 0.9)
+    const eased = easeInOutCubic(progress)
+    camera.position.lerpVectors(active.fromPos, active.toPos, eased)
+    controls.target.lerpVectors(active.fromTarget, active.toTarget, eased)
+    controls.update()
+
+    if (progress >= 1) flight.current = null
+  })
+
+  return null
+}
+
 function SceneContents({
   locations,
   balances,
@@ -1717,6 +1824,7 @@ function SceneContents({
             status={status}
             selected={selectedLocationId === location.id}
             hovered={hoveredId === location.id}
+            dimmed={!!selectedLocationId && selectedLocationId !== location.id}
             onSelect={onSelect}
             onHover={setHoveredId}
           />
@@ -1729,11 +1837,23 @@ function SceneContents({
             status={status}
             selected={selectedLocationId === location.id}
             hovered={hoveredId === location.id}
+            dimmed={!!selectedLocationId && selectedLocationId !== location.id}
             onSelect={onSelect}
             onHover={setHoveredId}
           />
         )
       )}
+
+      <WarehouseSetDressing />
+
+      <WarehouseWorkers reducedMotion={reducedMotion} />
+
+      <FlyToCamera
+        locations={locations}
+        selectedLocationId={selectedLocationId}
+        viewMode={viewMode}
+        reducedMotion={reducedMotion}
+      />
 
       <Forklift
         job={reducedMotion ? null : job}
