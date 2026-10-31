@@ -27,13 +27,10 @@ import { useI18n } from '@/i18n'
 import {
   easeInOutCubic,
   easeOutCubic,
-  approachWithEasing,
-  createAdvancedPath,
   smoothRotateToward,
   smoothTransform,
   // Enhanced v2 functions
   velocityBasedEasing,
-  smoothLookAt,
   cubicBezier,
   enhancedBoxHover,
   multiPhasePickup,
@@ -47,6 +44,7 @@ import {
   proximityAlert,
   ParticlePool,
 } from '@/lib/warehouse3d'
+import { planForkliftRoute, type RouteBounds, type RouteObstacle } from '@/lib/forkliftRoute'
 
 /**
  * Procedural 3D warehouse — racks, shelves, boxes, staging/packing areas, and
@@ -460,7 +458,7 @@ function AreaObject({
   onHover,
 }: AreaObjectProps) {
   const isStaging = platform === 'staging'
-  const platformSize: [number, number, number] = isStaging ? [2.4, 0.14, 1.8] : [2.1, 0.72, 1.15]
+  const platformSize: [number, number, number] = isStaging ? STAGING_PLATFORM : PACKING_PLATFORM
   const platformY = platformSize[1] / 2
   const boxRows = isStaging ? 2 : 1
   const boxCountPerRow = isStaging ? 3 : 2
@@ -534,7 +532,6 @@ function AreaObject({
  * (z ≈ -1.575) and the staging/packing platforms (z ≈ 1.0). */
 const FORKLIFT_PARK = new Vector3(5.7, 0, 1.5)
 const FORKLIFT_PARK_ROTATION = -0.55
-const DELIVERY_LANE_Z = -0.4
 const BOX_LOCAL_Y = 0.3
 const BOX_LOCAL_Z = 0.8
 const BOX_SLIDE = 0.55
@@ -544,7 +541,6 @@ const WHEEL_RADIUS = 0.14
 /** Deliberately relaxed so the forklift cruises instead of darting. */
 const FORKLIFT_SPEED = 3.9
 const ROTATION_SPEED = 3.8
-const ACCELERATION_FACTOR = 0.95
 const HOVER_FREQUENCY = 2.8
 
 /** Hover offset for idle forklift body bobbing. */
@@ -560,6 +556,40 @@ const DELIVERY_PULSE_AMP = 0.12
 const PROXIMITY_WARNING_RADIUS = 1.5
 const PROXIMITY_DANGER_RADIUS = 1.0
 
+/** Hard floor limits (19 × 13 plane, with a little wall clearance). */
+const WAREHOUSE_BOUNDS: RouteBounds = {
+  minX: -8.9,
+  maxX: 8.9,
+  minZ: -5.9,
+  maxZ: 5.9,
+}
+
+/** Forklift body clearance used by the route planner. The aisles are 2.5 units
+ *  wide, so this still leaves a comfortable corridor while keeping the machine
+ *  clear of rack uprights and platforms. */
+const ROUTE_CLEARANCE = 0.62
+const ROUTE_OPTIONS = {
+  clearance: ROUTE_CLEARANCE,
+  cellSize: 0.22,
+  bounds: WAREHOUSE_BOUNDS,
+  cornerRadius: 0.72,
+  // Rounded corners may cut inside the A* path, so keep at least the half-width
+  // of the forklift plus the loaded crate (≈0.49) between the centreline and a
+  // real shelf/platform. The planner tightens the fillet radius until it fits.
+  safetyClearance: 0.52,
+} as const
+
+/** Dock geometry. Racks are served from their front (+local Z); staging and
+ *  packing are served from the central-aisle side (-local Z), which is the
+ *  natural drive lane. */
+const RACK_DOCK_GAP = 0.85
+const AREA_DOCK_GAP = 0.7
+const RACK_REVERSE_DISTANCE = 0.9
+const AREA_REVERSE_DISTANCE = 0.7
+
+const STAGING_PLATFORM: [number, number, number] = [2.4, 0.14, 1.8]
+const PACKING_PLATFORM: [number, number, number] = [2.1, 0.72, 1.15]
+
 interface Placement {
   location: StorageLocation
   level: number
@@ -572,38 +602,90 @@ interface DeliveryJob {
   drop: Placement
 }
 
+interface DockGeometry {
+  /** Standing spot in front of the location. */
+  point: Vector3
+  /** Unit vector from the dock into the location. */
+  direction: Vector3
+  /** Unit vector pointing away from the location (reverse-out direction). */
+  away: Vector3
+  /** Heading the forklift uses while parked at the dock. */
+  yaw: number
+  /** How far to reverse before turning away from the shelf. */
+  reverseDistance: number
+}
+
 interface DeliveryRoutine {
   pickupCurve: CatmullRomCurve3
-  dropCurve: CatmullRomCurve3
+  carryCurve: CatmullRomCurve3
   returnCurve: CatmullRomCurve3
   pickupAt: Vector3
+  pickupExit: Vector3
   dropAt: Vector3
+  dropExit: Vector3
   pickupYaw: number
   dropYaw: number
+  carryStartYaw: number
+  returnStartYaw: number
   pickupLift: number
   dropLift: number
   startLift: number
-  sameSpot: boolean
+  pickupReverse: number
+  dropReverse: number
+  pickupTurn: number
+  dropTurn: number
   t1: number
   t2: number
   t3: number
   t4: number
   t5: number
+  t6: number
+  t7: number
+  t8: number
+  t9: number
 }
 
-/** Distance from a location's centre to the standing spot in front of it. */
-function approachPoint(location: StorageLocation) {
-  const halfDepth =
-    location.type === 'RACK' ? RACK_DEPTH / 2 : location.type === 'STAGING' ? 0.9 : 0.575
-  // Racks accept the forks inside the shelf; areas keep the tines just clear
-  // of the platform while the carriage is at rest height.
-  const distance = halfDepth + (location.type === 'RACK' ? 0.85 : 1.15)
+/** Footprint of a location, used for both docking and obstacle avoidance. */
+function locationHalfDepth(location: StorageLocation) {
+  if (location.type === 'RACK') return RACK_DEPTH / 2
+  return location.type === 'STAGING' ? STAGING_PLATFORM[2] / 2 : PACKING_PLATFORM[2] / 2
+}
+
+function routeObstaclesFromLocations(locations: StorageLocation[]): RouteObstacle[] {
+  return locations.map((location) => ({
+    x: location.x,
+    z: location.z,
+    halfWidth:
+      location.type === 'RACK'
+        ? RACK_WIDTH / 2
+        : location.type === 'STAGING'
+          ? STAGING_PLATFORM[0] / 2
+          : PACKING_PLATFORM[0] / 2,
+    halfDepth: locationHalfDepth(location),
+    rotation: location.rotation ?? 0,
+  }))
+}
+
+/** Standing spot + facing direction for a location. */
+function dockGeometry(location: StorageLocation): DockGeometry {
+  const side = location.type === 'RACK' ? 1 : -1
+  const gap = location.type === 'RACK' ? RACK_DOCK_GAP : AREA_DOCK_GAP
+  const distance = locationHalfDepth(location) + gap
   const rotation = location.rotation ?? 0
-  return new Vector3(
-    location.x + Math.sin(rotation) * distance,
+  const point = new Vector3(
+    location.x + Math.sin(rotation) * distance * side,
     0,
-    location.z + Math.cos(rotation) * distance
+    location.z + Math.cos(rotation) * distance * side
   )
+  // Direction from the standing spot into the rack/platform.
+  const direction = new Vector3(-Math.sin(rotation) * side, 0, -Math.cos(rotation) * side)
+  return {
+    point,
+    direction,
+    away: direction.clone().multiplyScalar(-1),
+    yaw: Math.atan2(direction.x, direction.z),
+    reverseDistance: location.type === 'RACK' ? RACK_REVERSE_DISTANCE : AREA_REVERSE_DISTANCE,
+  }
 }
 
 function surfaceHeight({ location, level }: Placement) {
@@ -619,22 +701,27 @@ function carriageLift(placement: Placement) {
   return Math.max(0, surfaceHeight(placement) + 0.03 - (BOX_LOCAL_Y - 0.18))
 }
 
-/** Smooth drive path with advanced planning: start → aisle lane → the spot in front of the target. */
-function driveCurve(from: Vector3, to: Vector3) {
-  const start = new Vector3(from.x, 0, from.z)
-  const end = new Vector3(to.x, 0, to.z)
-  const { path } = createAdvancedPath(start, end, DELIVERY_LANE_Z, 3.2, 1.0)
-  return new CatmullRomCurve3(path, false, 'centripetal')
-}
-
-function driveDuration(curve: CatmullRomCurve3) {
-  // Generous travel time keeps the cruise calm; length still scales it.
-  return MathUtils.clamp(1.0 + curve.getLength() / 6.0, 1.4, 3.0)
-}
-
 function headingOf(curve: CatmullRomCurve3, t: number) {
   const tangent = curve.getTangentAt(MathUtils.clamp(t, 0, 1))
   return Math.atan2(tangent.x, tangent.z)
+}
+
+function shortestAngleDelta(from: number, to: number) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from))
+}
+
+/** Travel time scales with path length and stays calm on long hauls. */
+function driveDuration(curve: CatmullRomCurve3) {
+  const cruise = FORKLIFT_SPEED * 0.76
+  return MathUtils.clamp(0.9 + curve.getLength() / cruise, 1.3, 6.5)
+}
+
+function reverseDuration(distance: number) {
+  return MathUtils.clamp(0.35 + distance / 1.8, 0.45, 1.2)
+}
+
+function turnDuration(from: number, to: number) {
+  return MathUtils.clamp(Math.abs(shortestAngleDelta(from, to)) / 3.4, 0.18, 0.95)
 }
 
 /** A sideways step along a location's local X axis (same-rack level moves). */
@@ -643,39 +730,98 @@ function lateralOffset(location: StorageLocation, distance: number) {
   return new Vector3(Math.cos(rotation) * distance, 0, -Math.sin(rotation) * distance)
 }
 
-function buildRoutine(job: DeliveryJob, start: Vector3, startLift: number): DeliveryRoutine {
+function buildRoutine(
+  job: DeliveryJob,
+  start: Vector3,
+  startLift: number,
+  obstacles: RouteObstacle[]
+): DeliveryRoutine {
+  const pickupDock = dockGeometry(job.pickup.location)
+  const dropDock = dockGeometry(job.drop.location)
   const sameSpot = job.pickup.location.id === job.drop.location.id
-  const pickupAt = approachPoint(job.pickup.location)
   const dropAt = sameSpot
-    ? pickupAt
+    ? pickupDock.point
         .clone()
         .add(lateralOffset(job.drop.location, job.drop.level >= job.pickup.level ? 0.55 : -0.55))
-    : approachPoint(job.drop.location)
-  const pickupCurve = driveCurve(start, pickupAt)
-  const dropCurve = driveCurve(pickupAt, dropAt)
-  const returnCurve = driveCurve(dropAt, FORKLIFT_PARK)
-  const pickupYaw = headingOf(pickupCurve, 1)
+    : dropDock.point.clone()
+
+  // The forklift reverses straight out of a dock before turning, so its forks
+  // (and the carried box) never sweep through the rack uprights.
+  const pickupExit = pickupDock.point
+    .clone()
+    .addScaledVector(pickupDock.away, pickupDock.reverseDistance)
+  const dropPre = dropAt.clone().addScaledVector(dropDock.away, dropDock.reverseDistance)
+  const dropExit = dropAt.clone().addScaledVector(dropDock.away, dropDock.reverseDistance)
+
+  // Route to the pre-dock point, then add the short straight lead-in. The final
+  // segment is aligned with the dock heading, so the forklift arrives square.
+  const pickupRoute = planForkliftRoute(start, pickupExit, obstacles, ROUTE_OPTIONS)
+  const pickupCurve = new CatmullRomCurve3(
+    [...pickupRoute.points, pickupDock.point.clone()],
+    false,
+    'centripetal'
+  )
+
+  // Carry: leave the pickup dock backwards, then take the planned route to the
+  // destination pre-dock point.
+  const carryRoute = planForkliftRoute(pickupExit, dropPre, obstacles, ROUTE_OPTIONS)
+  const carryCurve = new CatmullRomCurve3(
+    [...carryRoute.points, dropAt.clone()],
+    false,
+    'centripetal'
+  )
+
+  // Return: back out of the destination, then drive home.
+  const returnRoute = planForkliftRoute(dropExit, FORKLIFT_PARK, obstacles, ROUTE_OPTIONS)
+  const returnCurve = new CatmullRomCurve3(returnRoute.points, false, 'centripetal')
+
+  const pickupYaw = pickupDock.yaw
+  const dropYaw = sameSpot ? pickupDock.yaw : dropDock.yaw
+  const carryStartYaw = headingOf(carryCurve, 0)
+  const returnStartYaw = headingOf(returnCurve, 0)
+
   const t1 = driveDuration(pickupCurve)
+  const pickupReverse = reverseDuration(pickupDock.reverseDistance)
+  const pickupTurn = turnDuration(pickupYaw, carryStartYaw)
   const t2 = t1 + LIFT_DURATION
-  const t3 = t2 + driveDuration(dropCurve)
-  const t4 = t3 + PLACE_DURATION
+  const t3 = t2 + pickupReverse
+  const t4 = t3 + pickupTurn
+  const t5 = t4 + driveDuration(carryCurve)
+  const t6 = t5 + PLACE_DURATION
+  const dropReverse = reverseDuration(dropDock.reverseDistance)
+  const dropTurn = turnDuration(dropYaw, returnStartYaw)
+  const t7 = t6 + dropReverse
+  const t8 = t7 + dropTurn
+  const t9 = t8 + driveDuration(returnCurve)
+
   return {
     pickupCurve,
-    dropCurve,
+    carryCurve,
     returnCurve,
-    pickupAt,
+    pickupAt: pickupDock.point.clone(),
+    pickupExit,
     dropAt,
+    dropExit,
     pickupYaw,
-    dropYaw: sameSpot ? pickupYaw : headingOf(dropCurve, 1),
+    dropYaw,
+    carryStartYaw,
+    returnStartYaw,
     pickupLift: carriageLift(job.pickup),
     dropLift: carriageLift(job.drop),
     startLift,
-    sameSpot,
+    pickupReverse,
+    dropReverse,
+    pickupTurn,
+    dropTurn,
     t1,
     t2,
     t3,
     t4,
-    t5: t4 + driveDuration(returnCurve),
+    t5,
+    t6,
+    t7,
+    t8,
+    t9,
   }
 }
 
@@ -753,7 +899,18 @@ function Forklift({
   // Carriage suspension offsets (applied once per frame, after the routine runs)
   const carriageBob = useRef({ x: 0, y: 0, roll: 0 })
 
-  const pulsePoint = useMemo(() => (job ? approachPoint(job.drop.location) : null), [job])
+  const obstacles = useMemo(() => routeObstaclesFromLocations(locations), [locations])
+  const pulsePoint = useMemo(() => (job ? dockGeometry(job.drop.location).point : null), [job])
+
+  // A waiting crate on the receiving platform makes the inbound trip legible:
+  // the box is already there before the forklift arrives, then it is picked up.
+  const waitingCrate = useMemo(() => {
+    if (!job || job.pickup.location.type !== 'STAGING') return null
+    const dock = dockGeometry(job.pickup.location)
+    const position = dock.point.clone().addScaledVector(dock.direction, BOX_LOCAL_Z)
+    position.y = surfaceHeight(job.pickup) + 0.21
+    return { position, yaw: dock.yaw }
+  }, [job])
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -803,7 +960,12 @@ function Forklift({
         routine.current = {
           jobId: job.id,
           startedAt: clock,
-          plan: buildRoutine(job, new Vector3(model.position.x, 0, model.position.z), lift.current),
+          plan: buildRoutine(
+            job,
+            new Vector3(model.position.x, 0, model.position.z),
+            lift.current,
+            obstacles
+          ),
         }
         setCompleted(false)
       }
@@ -812,66 +974,72 @@ function Forklift({
       setDeliveryInfo({ elapsed, plan })
 
       if (elapsed < plan.t1) {
-        // Drive to the pickup point with a calm, single cubic-bezier ease.
+        // Drive to the pickup dock with a calm, single cubic-bezier ease.
         const driveT = MathUtils.clamp(elapsed / plan.t1, 0, 1)
-        const easedProgress = cubicBezier(driveT, 0, 0.22, 0.78, 1)
+        const easedProgress = easeInOutCubic(driveT)
         const point = plan.pickupCurve.getPointAt(easedProgress)
+        model.position.set(point.x, 0, point.z)
         const targetYaw = headingOf(plan.pickupCurve, easedProgress)
-        const { rotation, arrived: rotArrived } = smoothRotateToward(
+        yaw.current = smoothRotateToward(
           yaw.current,
           targetYaw,
-          dt * ROTATION_SPEED * ACCELERATION_FACTOR
-        )
-        yaw.current = rotation
-        const { position, arrived: posArrived } = approachWithEasing(
-          model.position,
-          point,
-          dt * FORKLIFT_SPEED * ACCELERATION_FACTOR
-        )
-        model.position.copy(position)
-        if (rotArrived && posArrived) {
-          model.position.copy(point)
-          yaw.current = targetYaw
-        }
-        targetLift = MathUtils.lerp(plan.startLift, 0, easeInOutCubic(elapsed / 0.22))
+          dt * ROTATION_SPEED * 1.35
+        ).rotation
+        const liftDown = easeInOutCubic(MathUtils.clamp(elapsed / Math.min(0.3, plan.t1), 0, 1))
+        targetLift = MathUtils.lerp(plan.startLift, 0, liftDown)
       } else if (elapsed < plan.t2) {
         // Raise the forks to the source level; the box fades in on the tines.
         const liftT = MathUtils.clamp((elapsed - plan.t1) / LIFT_DURATION, 0, 1)
         // Cubic-bezier fork lift: gentle start, firm settle (custom control points).
         const liftEase = cubicBezier(liftT, 0, 0.32, 0.68, 1)
         model.position.set(plan.pickupAt.x, 0, plan.pickupAt.z)
-        yaw.current = plan.pickupYaw
+        yaw.current = smoothRotateToward(
+          yaw.current,
+          plan.pickupYaw,
+          dt * ROTATION_SPEED * 1.6
+        ).rotation
         targetLift = MathUtils.lerp(0, plan.pickupLift, liftEase)
         boxVisible = liftEase > 0.2
         boxOpacity = MathUtils.clamp((liftEase - 0.2) / 0.8, 0, 1)
         // Four-stage pickup micro-animation: approach → align → grip → lift.
         boxScale = multiPhasePickup(liftT, 0).scale
       } else if (elapsed < plan.t3) {
-        // Carry: drive to the destination while matching its level.
-        const carryT = MathUtils.clamp((elapsed - plan.t2) / (plan.t3 - plan.t2), 0, 1)
+        // Reverse straight out of the rack while still facing it. This is the
+        // move that keeps the loaded forks from sweeping through the uprights.
+        const reverseT = MathUtils.clamp((elapsed - plan.t2) / plan.pickupReverse, 0, 1)
+        const easedProgress = easeInOutCubic(reverseT)
+        model.position.lerpVectors(plan.pickupAt, plan.pickupExit, easedProgress)
+        yaw.current = smoothRotateToward(
+          yaw.current,
+          plan.pickupYaw,
+          dt * ROTATION_SPEED * 1.35
+        ).rotation
+        targetLift = plan.pickupLift
+        boxVisible = true
+      } else if (elapsed < plan.t4) {
+        // Pivot in the open aisle, clear of the rack, then line up with the
+        // carry route.
+        model.position.copy(plan.pickupExit)
+        yaw.current = smoothRotateToward(
+          yaw.current,
+          plan.carryStartYaw,
+          dt * ROTATION_SPEED * 2.4
+        ).rotation
+        targetLift = plan.pickupLift
+        boxVisible = true
+      } else if (elapsed < plan.t5) {
+        // Carry: follow the planned, obstacle-free curve to the destination.
+        const carryT = MathUtils.clamp((elapsed - plan.t4) / (plan.t5 - plan.t4), 0, 1)
 
         // Velocity-based easing: eases out of the pickup, cruises, then brakes.
         const velocityEase = velocityBasedEasing(carryT)
         const easedProgress = velocityEase.position
         const carrySpeed = velocityEase.velocity
 
-        const point = plan.dropCurve.getPointAt(easedProgress)
-
-        // Smooth look-at turning instead of a hard heading target.
-        if (plan.sameSpot) {
-          yaw.current = plan.pickupYaw
-        } else {
-          const lookAhead = plan.dropCurve.getPointAt(Math.min(easedProgress + 0.08, 1))
-          yaw.current = smoothLookAt(yaw.current, lookAhead, model.position, dt, 1.9)
-        }
-
-        const { position: newPos, arrived: posArrived } = approachWithEasing(
-          model.position,
-          point,
-          dt * FORKLIFT_SPEED * ACCELERATION_FACTOR
-        )
-        model.position.copy(newPos)
-        if (posArrived) model.position.copy(point)
+        const point = plan.carryCurve.getPointAt(easedProgress)
+        model.position.set(point.x, 0, point.z)
+        const targetYaw = headingOf(plan.carryCurve, easedProgress)
+        yaw.current = smoothRotateToward(yaw.current, targetYaw, dt * ROTATION_SPEED * 1.6).rotation
 
         targetLift = MathUtils.lerp(plan.pickupLift, plan.dropLift, easedProgress)
         boxVisible = true
@@ -883,9 +1051,9 @@ function Forklift({
           carriageBob.current.y = bobbing.yOffset
           carriageBob.current.roll = bobbing.rotation
         }
-      } else if (elapsed < plan.t4) {
+      } else if (elapsed < plan.t6) {
         // Place: slide the box off the tines into the rack/platform with impact effect
-        const placeT = MathUtils.clamp((elapsed - plan.t3) / PLACE_DURATION, 0, 1)
+        const placeT = MathUtils.clamp((elapsed - plan.t5) / PLACE_DURATION, 0, 1)
         const easedProgress = easeOutCubic(placeT)
         model.position.set(plan.dropAt.x, 0, plan.dropAt.z)
         // Ease the final turn instead of snapping the heading.
@@ -904,34 +1072,44 @@ function Forklift({
           boxSlide = BOX_SLIDE * easedProgress
         }
         boxOpacity = easedProgress < 0.55 ? 1 : 1 - easeOutCubic((easedProgress - 0.55) / 0.45)
-      } else if (elapsed < plan.t5) {
-        // Drive back to the parking spot with an empty, lowering carriage.
-        const returnT = MathUtils.clamp((elapsed - plan.t4) / (plan.t5 - plan.t4), 0, 1)
+      } else if (elapsed < plan.t7) {
+        // Back away from the destination with an empty, lowering carriage.
+        const reverseT = MathUtils.clamp((elapsed - plan.t6) / plan.dropReverse, 0, 1)
+        const easedProgress = easeInOutCubic(reverseT)
+        model.position.lerpVectors(plan.dropAt, plan.dropExit, easedProgress)
+        yaw.current = smoothRotateToward(
+          yaw.current,
+          plan.dropYaw,
+          dt * ROTATION_SPEED * 1.35
+        ).rotation
+        targetLift = MathUtils.lerp(plan.dropLift, 0, easedProgress)
+      } else if (elapsed < plan.t8) {
+        // Pivot at the exit, clear of the shelf, before the homeward run.
+        model.position.copy(plan.dropExit)
+        yaw.current = smoothRotateToward(
+          yaw.current,
+          plan.returnStartYaw,
+          dt * ROTATION_SPEED * 2.4
+        ).rotation
+        targetLift = 0
+      } else if (elapsed < plan.t9) {
+        // Drive back to the parking spot with an empty carriage.
+        const returnT = MathUtils.clamp((elapsed - plan.t8) / (plan.t9 - plan.t8), 0, 1)
         // Same calm S-curve as the outbound leg — no mid-path speed spike.
-        const easedProgress = cubicBezier(returnT, 0, 0.22, 0.78, 1)
+        const easedProgress = easeInOutCubic(returnT)
         const point = plan.returnCurve.getPointAt(easedProgress)
+        model.position.set(point.x, 0, point.z)
         const targetYaw = headingOf(plan.returnCurve, easedProgress)
-        const { rotation, arrived: rotArrived } = smoothRotateToward(
+        yaw.current = smoothRotateToward(
           yaw.current,
           targetYaw,
-          dt * ROTATION_SPEED * ACCELERATION_FACTOR
-        )
-        yaw.current = rotation
-        const { position, arrived: posArrived } = approachWithEasing(
-          model.position,
-          point,
-          dt * FORKLIFT_SPEED * ACCELERATION_FACTOR
-        )
-        model.position.copy(position)
-        if (rotArrived && posArrived) {
-          model.position.copy(point)
-          yaw.current = targetYaw
-        }
-        targetLift = MathUtils.lerp(plan.dropLift, 0, easedProgress)
+          dt * ROTATION_SPEED * 1.35
+        ).rotation
+        targetLift = 0
       } else {
-        // Finish at the parking spot and hand control back to the parent.
+        // Finish at the parking spot and hand control back to the parent. The
+        // heading is left alone here so the idle drift rotates it smoothly.
         model.position.set(FORKLIFT_PARK.x, 0, FORKLIFT_PARK.z)
-        yaw.current = FORKLIFT_PARK_ROTATION
         targetLift = 0
         if (!completed) {
           setCompleted(true)
@@ -939,19 +1117,19 @@ function Forklift({
         }
       }
 
-      if (elapsed >= plan.t3) {
-        pulseProgress = MathUtils.clamp((elapsed - plan.t3) / 0.7, 0, 1)
+      if (elapsed >= plan.t5) {
+        pulseProgress = MathUtils.clamp((elapsed - plan.t5) / 0.7, 0, 1)
       }
 
       // Compute glow values in useFrame (not during render)
       // Forklift chassis glow
-      if (job && elapsed > plan.t2 && elapsed < plan.t4) {
+      if (job && elapsed > plan.t4 && elapsed < plan.t6) {
         // Pick up & carry: bright yellow glow
         setChassisEmissive((prev) => MathUtils.lerp(prev, 0.35, dt * 4))
-      } else if (job && elapsed >= plan.t4) {
+      } else if (job && elapsed >= plan.t6) {
         // Returning: softer glow
         setChassisEmissive((prev) => MathUtils.lerp(prev, 0.2, dt * 4))
-      } else if (job && elapsed <= plan.t2) {
+      } else if (job && elapsed <= plan.t4) {
         // Approaching pickup: rising glow
         setChassisEmissive((prev) =>
           MathUtils.lerp(prev, Math.min(0.35, (elapsed / plan.t1) * 0.35), dt * 4)
@@ -962,12 +1140,12 @@ function Forklift({
 
       // Pickup/drop location glow indicators
       setPickupIndicatorEmissive((prev) =>
-        MathUtils.lerp(prev, job && elapsed < plan.t3 ? (hovered ? 0.4 : 0.25) : 0, dt * 4)
+        MathUtils.lerp(prev, job && elapsed < plan.t4 ? (hovered ? 0.4 : 0.25) : 0, dt * 4)
       )
       setDropIndicatorEmissive((prev) =>
         MathUtils.lerp(
           prev,
-          job && elapsed >= plan.t3 && elapsed < plan.t4 ? (hovered ? 0.45 : 0.3) : 0,
+          job && elapsed >= plan.t5 && elapsed < plan.t9 ? (hovered ? 0.45 : 0.3) : 0,
           dt * 4
         )
       )
@@ -1234,10 +1412,39 @@ function Forklift({
         ) : null}
       </group>
 
+      {/* Inbound crate waiting on the receiving platform. It is the box the
+          forklift drives over to collect; it disappears as the forks take it. */}
+      {waitingCrate && job && deliveryInfo && deliveryInfo.elapsed < deliveryInfo.plan.t1 + 0.12 ? (
+        <>
+          <group position={waitingCrate.position} rotation-y={waitingCrate.yaw}>
+            <RoundedBox castShadow args={[0.42, 0.36, 0.42]} radius={0.03} smoothness={2}>
+              <meshStandardMaterial
+                color="#d9b98e"
+                roughness={0.9}
+                emissive="#f6c445"
+                emissiveIntensity={0.18 + Math.abs(Math.sin(pulseOffset * 0.5)) * 0.12}
+              />
+            </RoundedBox>
+          </group>
+          <mesh
+            rotation-x={-Math.PI / 2}
+            position={[waitingCrate.position.x, 0.155, waitingCrate.position.z]}
+          >
+            <ringGeometry args={[0.42, 0.5, 40]} />
+            <meshBasicMaterial
+              color="#f6c445"
+              transparent
+              opacity={0.32 + Math.abs(Math.sin(pulseOffset * 0.5)) * 0.2}
+              depthWrite={false}
+            />
+          </mesh>
+        </>
+      ) : null}
+
       {/* Pickup location indicator - glow ring around source location */}
       {job && !completed && deliveryInfo ? (
         <>
-          {deliveryInfo.elapsed < deliveryInfo.plan.t3 && deliveryInfo.plan.pickupAt ? (
+          {deliveryInfo.elapsed < deliveryInfo.plan.t4 && deliveryInfo.plan.pickupAt ? (
             <mesh
               rotation-x={-Math.PI / 2}
               position={[deliveryInfo.plan.pickupAt.x, 0.03, deliveryInfo.plan.pickupAt.z]}
@@ -1261,8 +1468,8 @@ function Forklift({
           ) : null}
 
           {/* Drop location indicator - glow ring around destination location */}
-          {deliveryInfo.elapsed >= deliveryInfo.plan.t3 &&
-          deliveryInfo.elapsed < deliveryInfo.plan.t5 &&
+          {deliveryInfo.elapsed >= deliveryInfo.plan.t5 &&
+          deliveryInfo.elapsed < deliveryInfo.plan.t9 &&
           deliveryInfo.plan.dropAt ? (
             <mesh
               rotation-x={-Math.PI / 2}

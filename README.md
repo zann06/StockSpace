@@ -41,11 +41,15 @@ Rak A2 selected); the UI is built as real React components following
   orbit/pan/zoom, camera reset, 3D/2D top-down toggle, level filters (L1–L3),
   fullscreen, and an accessible location list when WebGL is unavailable.
   A committed stock movement triggers a **delivery animation**: the forklift
-  rolls down the aisle at a calm, eased pace, lifts the box through a
-  four-stage pickup (approach → align → grip → lift), carries it with a light
-  suspension bob, and sets it down with a landing squash — plus trail
-  particles, a heading indicator, a proximity warning ring near racks, and a
-  highlight ring when you click a box. Skipped under reduced-motion.
+  takes an obstacle-aware route through the aisles (planned against the live
+  rack/staging/packing footprints with a safety margin around the loaded
+  forklift, so it never cuts through an object), lifts the box through a
+  four-stage pickup (approach → align → grip → lift), reverses clear of the
+  shelf, carries it with a light suspension bob, and sets it down with a
+  landing squash — plus trail particles, a heading indicator, a proximity
+  warning ring near racks, and a highlight ring when you click a box. Stock-ins
+  also show the inbound crate waiting on the receiving platform until the forks
+  collect it. Skipped under reduced-motion.
 - **Real inventory workflows** — stock in/out/transfer/adjustment forms write
   to PostgreSQL inside database transactions; overselling is impossible by
   construction and covered by integration tests, including concurrent requests.

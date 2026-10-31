@@ -43,15 +43,25 @@ PostgreSQL (StorageLocation: x, z, rotation, capacity, levels, type, code)
 ## Delivery animation
 
 A saved movement emits a `MovementEvent`; the scene queues it and drives one
-forklift trip (one job at a time, no overlap):
+forklift trip (one job at a time, no overlap). Routes are **planned against the
+live layout**: rack, staging, and packing footprints are inflated by the
+forklift's body clearance, an A* pass finds a collision-free path across the
+floor, line-of-sight simplification removes grid stair-steps, and quadratic
+fillets round every corner. The forklift therefore never drives through a rack
+or platform, even when locations are moved in the database.
 
 | Phase | Motion |
 | --- | --- |
-| Drive to source | Catmull-Rom drive path, eased with a single cubic-bezier `(0.22, 0.78)` over 1.4–3.0 s so the forklift pulls away and brakes calmly |
+| Drive to source | Obstacle-aware route to a pre-dock point, then a short straight lead-in aligned with the shelf/platform. A calm ease-in-out covers the 1.3–6.5 s travel window. |
 | Lift | Cubic-bezier fork rise (0.62 s) with a four-stage box micro-animation — approach → align → grip → lift (`multiPhasePickup`) |
-| Carry | Velocity-based easing (accelerate, cruise, brake) + smooth look-at steering, with a small speed-scaled suspension bob on the carriage |
+| Reverse out | The loaded forks back straight out of the rack for 0.7–0.9 units before the machine pivots, so the box never sweeps through the uprights |
+| Carry | Planned route to the destination pre-dock, with velocity-based easing (accelerate, cruise, brake), smooth steering, and a small speed-scaled suspension bob |
 | Place | Box slides off the tines, gravity drop with squash-and-stretch and a landing flash, then the glow fades |
-| Return | Same calm S-curve back to the parking spot, carriage lowering |
+| Reverse + return | Backs clear of the destination, pivots in the open aisle, then takes a planned route back to the parking spot |
+
+**Inbound crate:** a stock-in from the receiving area shows a kraft crate
+waiting on the staging platform before the forklift arrives. It is the box the
+machine collects; it disappears under the forks as the lift begins.
 
 Feedback layered on top: trail particles from an object pool, a heading
 indicator cone, an amber→red proximity ring when a rack is within
