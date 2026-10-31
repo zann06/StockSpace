@@ -24,7 +24,7 @@ import type {
 import { formatNumber } from '@/lib/format'
 import { applyGroupDim } from '@/lib/warehouse3d'
 import { WarehouseSetDressing } from '@/components/warehouse/WarehouseSetDressing'
-import { WarehouseWorkers } from '@/components/warehouse/WarehouseWorkers'
+import { BlobShadow, WarehouseWorkers } from '@/components/warehouse/WarehouseWorkers'
 import { consumePendingMovement, onMovement, type MovementEvent } from '@/lib/events'
 import { useI18n } from '@/i18n'
 import {
@@ -1324,6 +1324,7 @@ function Forklift({
         }}
         onPointerOut={() => setHovered(false)}
       >
+        <BlobShadow radius={1.15} opacity={0.2} />
         <group ref={body}>
           {/* Chassis + operator cage */}
           <mesh castShadow position={[0, 0.46, 0]}>
@@ -1793,6 +1794,14 @@ function SceneContents({
         shadow-camera-far={30}
       />
       <directionalLight position={[-6, 6, -4]} intensity={0.5} />
+      {/* Warm practical light matching the hanging lamps in the dressing */}
+      <pointLight
+        position={[0, 3.4, 1.2]}
+        intensity={7}
+        distance={11}
+        decay={1.6}
+        color="#ffe3b3"
+      />
 
       {/* Floor */}
       <mesh rotation-x={-Math.PI / 2} receiveShadow>
