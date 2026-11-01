@@ -5,7 +5,7 @@ import { config } from './config.js'
 import { prisma } from './prisma.js'
 
 /**
- * Single authentication system (docs/architecture.md D6): email/password
+ * Single authentication system (see README): email/password
  * credentials with HTTP-only cookie sessions, backed by the Prisma models
  * User/Session/Account/Verification.
  */

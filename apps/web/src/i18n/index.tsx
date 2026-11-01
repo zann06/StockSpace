@@ -269,8 +269,8 @@ const en: Record<string, string> = {
   'Tidak ada transaksi yang cocok dengan filter.': 'No transactions match the filters.',
   'Memuat laporan…': 'Loading report…',
   'Ekspor CSV': 'CSV export',
-  'Nilai stok = Σ(kuantitas × harga pokok) — perhitungan didokumentasikan di docs/database.md':
-    'Stock value = Σ(quantity × cost price) — documented in docs/database.md',
+  'Nilai stok = Σ(kuantitas × harga pokok) — perhitungan dijelaskan di README (bagian Database)':
+    'Stock value = Σ(quantity × cost price) — explained in the README (Database section)',
   'Laporan memuat hingga 50 transaksi per halaman': 'Reports show up to 50 transactions per page',
   'Halaman {page} dari {total}': 'Page {page} of {total}',
   Sebelumnya: 'Previous',

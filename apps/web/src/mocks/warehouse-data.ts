@@ -5,7 +5,7 @@
  * "Toko TechNusa". It exists so the UI shell and 3D prototype can be built and
  * demonstrated before the API lands (Phase 2–3). Pages show a visible
  * "Mode Demo" indicator while this data is in use. Production API modules must
- * never import from this directory (see docs/architecture.md, decision D4).
+ * never import from this directory (see the README, Architecture section).
  *
  * The shapes mirror the planned API payloads so swapping the source later is a
  * data-source change, not a rewrite.
