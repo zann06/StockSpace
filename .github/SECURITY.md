@@ -27,11 +27,19 @@ you prefer to remain anonymous.
 
 ## Scope notes
 
-- The application is currently Phase 1 (frontend + demo data); authentication
-  and the API land in Phases 2–4. Reports about missing authentication are
-  already tracked — see `docs/implementation-checklist.md`.
-- The development seed account (when introduced in Phase 4) is for local
-  development only and must never be enabled in production.
+The application includes a Fastify API, PostgreSQL persistence, better-auth
+sessions, workspace membership, and server-side roles. Reports of particular
+interest include:
+
+- authentication/session bypass, cookie or CSRF issues,
+- workspace isolation failures (reading or mutating another workspace's data),
+- privilege escalation between VIEWER / STAFF / ADMIN / OWNER,
+- stock-consistency bugs that allow negative balances or overselling,
+- injection, XSS, or unsafe rendering of user-controlled strings,
+- rate-limit bypasses on auth or movement endpoints.
+
+The development seed accounts are for local development only and must never be
+enabled in production.
 
 ## Best practices we follow
 
@@ -39,4 +47,7 @@ you prefer to remain anonymous.
 - Input validation with Zod on every external boundary (server-side).
 - Parameterized queries via Prisma.
 - Append-only stock movement history; corrections via compensating adjustments.
-- Rate limiting on authentication endpoints (20/min) and a global 300/min budget, returning 429.
+- HTTP-only cookie sessions, deliberate CORS configuration, and server-side
+  role checks on every write route.
+- Rate limiting on authentication endpoints (20/min), movements (60/min), and a
+  global 300/min budget, returning 429.

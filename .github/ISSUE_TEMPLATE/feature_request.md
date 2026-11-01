@@ -17,8 +17,7 @@ Any alternative solutions or features you've considered, including existing
 tools or workflows.
 
 **Scope check**
-Does this fit the MVP scope in [PRD.md](../PRD.md) (§3 lists explicit
-non-goals)? If it touches the 3D warehouse, how should it behave when WebGL is
+If it touches the 3D warehouse, how should it behave when WebGL is
 unavailable?
 
 **Additional context**

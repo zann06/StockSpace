@@ -14,7 +14,7 @@ import { useI18n } from '@/i18n'
 
 /**
  * Stock movement form (stock-in / stock-out / transfer / adjustment).
- * Controlled components + Zod validation on submit — see docs/architecture.md
+ * Controlled components + Zod validation on submit — see the README (Architecture)
  * decision D9 for why react-hook-form is not used yet.
  */
 

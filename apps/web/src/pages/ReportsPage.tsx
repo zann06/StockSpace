@@ -487,8 +487,8 @@ export function ReportsPage() {
           </span>
           <p className="mt-2 flex items-center gap-1.5 text-sm font-bold text-ink">
             <AlertTriangle aria-hidden className="h-4 w-4 text-warning-fg" />
-            Nilai stok = Σ(kuantitas × harga pokok) — perhitungan didokumentasikan di
-            docs/database.md
+            Nilai stok = Σ(kuantitas × harga pokok) — perhitungan dijelaskan di README (bagian
+            Database)
           </p>
           <p className="max-w-md text-xs leading-relaxed text-muted">
             Laporan memuat hingga 50 transaksi per halaman{' '}
