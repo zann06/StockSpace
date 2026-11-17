@@ -1,0 +1,16 @@
+# Normalize line endings so Windows and Linux checkouts behave identically.
+# Prettier is configured with `endOfLine: lf`, and `npm run format:check` would
+# otherwise fail on a Windows clone (core.autocrlf=true rewrites files to CRLF).
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Lockfile is generated; keep it byte-stable.
+package-lock.json text eol=lf

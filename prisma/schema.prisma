@@ -1,5 +1,5 @@
-// StockSpace data model — see docs/database.md for the rationale of every
-// constraint. Identifiers are UUIDs (non-guessable per PRD §10).
+// StockSpace data model — see the README ("Database and consistency") for the
+// rationale of every constraint. Identifiers are UUIDs (non-guessable per PRD §10).
 
 generator client {
   provider = "prisma-client-js"

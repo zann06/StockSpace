@@ -1,110 +1,159 @@
-# StockSpace
+<p align="center">
+  <img src="docs/brand/logo.png" alt="StockSpace" width="112" height="112">
+</p>
 
-**Open-source inventory management with an interactive 3D warehouse.**
+<h1 align="center">StockSpace</h1>
+
+<p align="center">
+  <strong>Open-source inventory management with an interactive 3D warehouse.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/zann06/StockSpace/actions/workflows/ci.yml"><img src="https://github.com/zann06/StockSpace/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://zann06.github.io/StockSpace/"><img src="https://img.shields.io/badge/live_demo-zann06.github.io%2FStockSpace-6546F5" alt="Live demo"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-10b981" alt="MIT license"></a>
+  <a href="package.json"><img src="https://img.shields.io/badge/node-%E2%89%A520.19-339933" alt="Node 20.19+"></a>
+  <a href=".github/CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-6546F5" alt="PRs welcome"></a>
+</p>
+
+<p align="center">
+  <a href="https://zann06.github.io/StockSpace/"><b>▶ Live demo</b></a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#3d-warehouse">3D warehouse</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#contributing">Contributing</a>
+</p>
 
 StockSpace helps small businesses manage inventory while seeing exactly where
 products are stored — receive, move, adjust, and issue stock, and explore your
-racks in a real 3D scene driven by your saved warehouse layout. Available in
-**Bahasa Indonesia and English**.
+racks in a real 3D scene generated from your saved warehouse layout. Everything
+runs on your own server, and the UI is available in **Bahasa Indonesia and
+English**.
 
-[![CI](https://github.com/zann06/StockSpace/actions/workflows/ci.yml/badge.svg)](https://github.com/zann06/StockSpace/actions)
-[![Live demo](https://img.shields.io/badge/live%20demo-zann06.github.io%2FStockSpace-6546F5)](https://zann06.github.io/StockSpace/)
-[License: MIT](LICENSE)
-
-**Try it now — no install:** [interactive live demo](https://zann06.github.io/StockSpace/)
-(static build on GitHub Pages: sign in with the demo accounts below, record
-movements, watch the 3D delivery animation — sample data, resets on refresh).
+No sign-up needed to look around: the
+[**live demo**](https://zann06.github.io/StockSpace/) is a static build with a
+seeded sample workspace (data resets on refresh).
 
 ## Contents
 
-- [Demo](#demo) · [Screenshots](#screenshots) · [Features](#features)
-- [Who it's for](#who-its-for) · [Scope and non-goals](#scope-and-non-goals)
-- [Tech stack](#tech-stack) · [Quick start](#quick-start-local-development)
-- [Architecture](#architecture) · [Database and consistency](#database-and-consistency)
-- [3D warehouse internals](#3d-warehouse-internals)
+- [At a glance](#at-a-glance)
+- [Demo](#demo) · [Screenshots](#screenshots)
+- [Features](#features) · [Who it's for](#who-its-for)
+- [Quick start](#quick-start) · [Demo accounts](#demo-accounts)
+- [Configuration](#configuration) · [Docker](#docker)
+- [Architecture](#architecture) · [API surface](#api-surface)
+- [Database and consistency](#database-and-consistency)
+- [3D warehouse](#3d-warehouse)
 - [Testing and quality gates](#testing-and-quality-gates)
 - [Production deployment (VPS)](#production-deployment-vps)
 - [Project structure](#project-structure) · [Roadmap](#roadmap)
 - [Contributing](#contributing) · [License](#license)
 
+## At a glance
+
+| | |
+| --- | --- |
+| **Live demo** | [zann06.github.io/StockSpace](https://zann06.github.io/StockSpace/) — static build, sample data, resets on refresh |
+| **Stack** | React 19 · TypeScript (strict) · Vite · Tailwind CSS v4 · React Three Fiber · Fastify 5 · PostgreSQL 16 · Prisma 6 |
+| **Runs on** | Node.js ≥ 20.19, npm, Docker (PostgreSQL) — or one `docker compose up` |
+| **Tests** | 69 web unit/component · 59 API integration (real PostgreSQL) · Playwright smoke + axe accessibility scan |
+| **License** | [MIT](LICENSE) — all 3D geometry is procedural and original, no third-party models |
+
 ## Demo
 
-End-to-end flow recorded against the real stack (API + PostgreSQL + browser) —
-sign in, browse the 3D warehouse, record a stock-in, watch the forklift carry the
-box to its rack, and see the dashboard update:
+End-to-end flow recorded against the real stack (API + PostgreSQL + browser):
+sign in, browse the 3D warehouse, record a stock-in, watch the forklift carry
+the box to its rack, and see the dashboard update.
 
 ![StockSpace demo — login, 3D warehouse, stock-in with delivery animation, updated dashboard](docs/screenshots/demo-stock-in.gif)
 
 ## Screenshots
 
-| | |
-| --- | --- |
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Warehouse 3D](docs/screenshots/warehouse.png) |
-| ![Inventory](docs/screenshots/inventory.png) | ![Stock opname](docs/screenshots/stocktakes.png) |
-| ![Reports](docs/screenshots/reports.png) | ![Login](docs/screenshots/login.png) |
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="Dashboard with KPI cards, 3D preview, low-stock list, top products, and the 7-day movement chart" width="760">
+</p>
 
-*Captured with Playwright against the live demo (Warehouse 3D shows the
-fly-to focus on Rak A1 with the other racks dimmed); the UI is built as real
-React components following `design-reference.png`.*
+| Warehouse 3D | Inventory |
+| --- | --- |
+| <img src="docs/screenshots/warehouse.png" alt="Warehouse 3D with a rack selected and its items listed" width="380"> | <img src="docs/screenshots/inventory.png" alt="Inventory table with search, filters, and stock status" width="380"> |
+| **Stock opname** | **Reports** |
+| <img src="docs/screenshots/stocktakes.png" alt="Stocktake screen with physical counts and differences" width="380"> | <img src="docs/screenshots/reports.png" alt="Reports with filters, movement history, and CSV export" width="380"> |
+
+<p align="center">
+  <img src="docs/screenshots/login.png" alt="Sign-in screen with the demo accounts" width="420">
+</p>
+
+*Captured with Playwright against the live app. The UI is built from real React
+components following `design-reference.png`, which ships with the repository as
+the project brief's visual reference.*
 
 ## Features
 
-- **Interactive 3D warehouse** — procedural racks, shelves, cargo boxes, and
-  staging/packing areas driven by the saved layout. Click a rack to fly the
+### 3D warehouse
+
+- **Interactive scene** — procedural racks, shelves, cargo boxes, and
+  staging/packing areas rendered from the saved layout. Click a rack to fly the
   camera to it (other racks dim) and open its items and movement history;
   orbit/pan/zoom, camera reset, 3D/2D top-down toggle, level filters (L1–L3),
   fullscreen, and an accessible location list when WebGL is unavailable.
-- **Living warehouse** — a procedural shell with walls, high windows, roof
-  beams, a dock door, floor markings, pallet freight, bollards, cones, an
-  extinguisher, ceiling lights, and four low-poly NPC workers (two perimeter
-  walkers and two stationary workers near packing/staging). All geometry is
-  original; NPCs follow fixed safe waypoint loops so they never interfere with
-  the forklift route planner, and everything freezes under reduced motion.
-- **Delivery animation** — a committed stock movement sends the forklift along
-  an obstacle-aware route through the aisles (planned against the live
-  rack/staging/packing footprints with a safety margin around the loaded
-  forklift, so it never cuts through an object), lifts the box through a
-  four-stage pickup (approach → align → grip → lift), reverses clear of the
-  shelf, carries it with a light suspension bob, and sets it down with a
-  landing squash — plus trail particles, a heading indicator, a proximity
-  warning ring near racks, and a highlight ring when you click a box. Stock-ins
-  also show the inbound crate waiting on the receiving platform until the forks
-  collect it. Skipped under reduced-motion.
+- **Living warehouse** — walls, high windows, roof beams, a dock door, floor
+  markings, pallet freight, bollards, cones, an extinguisher, ceiling lights,
+  and three low-poly NPC workers (a hauler walking a fixed loop along the
+  rack-front aisle, plus a packer and a watcher at their stations). The hauler
+  follows fixed safe waypoints, so it never interferes with the forklift route
+  planner, and everything freezes under reduced motion.
+- **Delivery animation** — a committed movement sends the forklift along an
+  obstacle-aware aisle route, lifts the box through a four-stage pickup
+  (approach → align → grip → lift), reverses clear of the shelf, carries it
+  with a light suspension bob, and sets it down with a landing squash — plus
+  trail particles, a heading indicator, a proximity warning ring near racks,
+  and a highlight ring when you click a box. Stock-ins show the inbound crate
+  waiting on the receiving platform until the forks collect it.
+
+### Inventory operations
+
 - **Real inventory workflows** — stock in/out/transfer/adjustment forms write
   to PostgreSQL inside database transactions; overselling is impossible by
   construction and covered by integration tests, including concurrent requests.
-- **Dashboard & reports from live data** — KPIs, low-stock summary, top-moved
-  products, 7-day movement chart, per-location utilization, filtered movement
-  report with pagination, and CSV export.
+- **Stock opname (stocktake)** — guided physical count per location/level;
+  committing generates adjustment movements automatically inside one
+  transaction, with a full audit trail (reference `ST-…`).
+- **Suppliers** — manage supplier contacts, link them to products and stock-in
+  movements, and see them in the restock proposal.
+- **Product import** — paste or upload a CSV to upsert hundreds of products by
+  SKU, with per-row error reporting (admin-only).
+- **Barcode scan & print** — scan product barcodes with the device camera
+  (native `BarcodeDetector`) to fill the stock-in form, and print Code-128
+  labels from the product page.
+
+### Insights
+
+- **Dashboard from live data** — KPIs, low-stock summary, top-moved products,
+  7-day movement chart, and per-location utilization.
+- **Reports** — filtered movement report with pagination, low-stock report,
+  restock proposal with estimated cost, and CSV export (up to 5,000 rows).
+- **Low-stock notifications** — created automatically when a product crosses
+  its reorder threshold, grouped so there is one unread alert per product.
+
+### Administration and platform
+
 - **Authentication & roles** — email/password sign-in with cookie sessions
-  (better-auth). Roles enforced server-side: VIEWER read-only, STAFF records
-  movements, ADMIN+ edits products. Workspaces are membership-scoped.
+  (better-auth). Roles are enforced server-side: VIEWER read-only, STAFF records
+  movements, ADMIN+ edits products, OWNER manages the workspace. Workspaces are
+  membership-scoped.
 - **Workspace member management** — Owners/Admins invite existing accounts,
   change roles, and remove members; the last Owner is protected and nobody can
   grant a role above their own.
 - **Admin product CRUD** — create and edit products (category, unit, pricing,
   reorder threshold, archive toggle) with an immutable SKU per workspace.
-- **Low-stock notifications** — created automatically when a product crosses
-  its reorder threshold, grouped (one unread alert per product).
 - **Onboarding tour** — an animated spotlight tour introduces the app on first
   sign-in; replay it anytime from Settings.
-- **Stock opname (stocktake)** — guided physical count per location/level;
-  committing generates adjustment movements automatically inside one
-  transaction, with a full audit trail (reference `ST-…`).
-- **Restock proposal** — aggregates the reorder shortfall of every active
-  product with estimated cost and supplier, exportable as CSV.
-- **Product import** — paste or upload a CSV to upsert hundreds of products
-  by SKU (per-row error reporting, admin-only).
-- **Suppliers** — manage supplier contacts and link them to products and
-  stock-in movements; surfaced in the restock proposal.
-- **Barcode scan & print** — scan product barcodes with the device camera
-  (native BarcodeDetector) to fill the stock-in form, and print Code-128
-  labels from the product page.
-- **Bilingual (ID/EN)** — switch language from the header or profile menu;
-  dates and number formats follow the active locale.
-- **Rate limiting, a11y, and E2E** — auth 20/min, movements 60/min, global
-  300/min; axe accessibility scan in CI; Playwright smoke test boots the real
-  API + web + database.
+- **Bilingual (ID/EN)** — switch language from the header or profile menu; dates
+  and number formats follow the active locale.
+- **Hardened defaults** — rate limiting (auth 20/min, movements 60/min, global
+  300/min), Zod validation on every input, axe accessibility scan in CI, and a
+  Playwright smoke test that boots the real API + web + database.
 - **Responsive & accessible** — off-canvas navigation on mobile, keyboard
   support throughout, visible focus states, WCAG-AA text contrast, and
   reduced-motion respected.
@@ -120,36 +169,23 @@ developers who want to self-host or contribute.
 
 | Role | Can do |
 | --- | --- |
-| Owner / Admin | Manage products, categories, units, suppliers, locations, users, and settings; view valuation, low-stock alerts, history, and reports |
-| Staff / Operator | View inventory and locations; record stock in/out, transfers, adjustments, and stocktakes |
+| Owner | Everything, including workspace settings, member management, and product CRUD |
+| Admin | Manage products, categories, units, suppliers, members, and settings; view valuation, alerts, history, and reports |
+| Staff | View inventory and locations; record stock in/out, transfers, adjustments, and stocktakes |
 | Viewer | Read-only access to dashboards, products, and the warehouse view |
 
 Permissions are enforced on the server, not only by hiding frontend controls.
 
-## Scope and non-goals
-
-The first release is deliberately an inventory system, not an ERP. Non-goals:
-full accounting, invoicing, or payroll; marketplace or shipping-carrier
-integrations; AI forecasting or AI-generated purchase orders; robotics,
-forklift control, or physical warehouse automation; complex multi-warehouse
-enterprise optimization; and a survey-accurate 3D representation of a real
+**Scope and non-goals.** The first release is deliberately an inventory system,
+not an ERP: no full accounting, invoicing, or payroll; no marketplace or
+shipping-carrier integrations; no AI forecasting; no robotics or physical
+warehouse automation; and no survey-accurate 3D representation of a real
 warehouse. The 3D scene is an operational aid and always has a non-3D fallback.
 
-## Tech stack
+## Quick start
 
-| Layer    | Choice                                                             |
-| -------- | ------------------------------------------------------------------ |
-| Frontend | React 19, TypeScript (strict), Vite, React Router, Tailwind CSS v4 |
-| 3D       | React Three Fiber, Drei, Three.js (procedural geometry, no models) |
-| Charts   | Recharts · Icons: lucide-react (ISC) · Font: Plus Jakarta Sans (OFL) |
-| Backend  | Fastify 5 + TypeScript · better-auth (sessions) · Zod validation    |
-| Database | PostgreSQL 16 + Prisma 6 (migrations, seed)                         |
-| Infra    | Docker Compose, GitHub Actions CI, nginx for static hosting         |
-
-## Quick start (local development)
-
-Requirements: **Node.js ≥ 20.19** (`.nvmrc` pins 22), npm, and Docker (for
-PostgreSQL).
+Requirements: **Node.js ≥ 20.19** (`.nvmrc` pins 22), npm, and Docker for
+PostgreSQL.
 
 ```bash
 git clone https://github.com/zann06/StockSpace.git
@@ -164,33 +200,58 @@ npm run dev            # web app on http://localhost:5173
 npm run dev:api        # REST API on http://localhost:4000
 ```
 
-**Sign in** at `/login` with the seeded development accounts (fictional
-business "Toko TechNusa", password for all: `stockspace-demo`):
+Open <http://localhost:5173> and sign in with one of the demo accounts below.
+
+> **Port 5432 already in use?** The compose file publishes PostgreSQL on **5433**
+> on purpose, so it can coexist with a locally installed server. Keep
+> `DATABASE_URL` pointing at 5433.
+
+### Demo accounts
+
+Password for every seeded account: `stockspace-demo`
 
 | Email | Role | Can do |
 | --- | --- | --- |
-| `farid@technusa.example` | OWNER | everything, incl. product CRUD |
-| `dewi@technusa.example` / `budi@technusa.example` | STAFF | read + record stock movements |
+| `farid@technusa.example` | OWNER | everything, incl. member management and product CRUD |
+| `dewi@technusa.example` · `budi@technusa.example` | STAFF | read + record stock movements |
 | `viewer@technusa.example` | VIEWER | read-only |
 
 These accounts exist **only in the local development seed** — never in
-production (roles are enforced server-side on every request).
-
-In the static demo, sign in as `farid@technusa.example` (OWNER), then open
+production. In the static demo, sign in as `farid@technusa.example`, then open
 **Settings → Pengguna** to try member management: invite
-`admin@technusa.example` or `sari@technusa.example` (demo accounts that are not
-members yet), change their roles, or remove them. Demo state resets on refresh.
+`admin@technusa.example` or `sari@technusa.example` (accounts that are not
+members yet), change their roles, or remove them.
 
-### Docker
+## Configuration
+
+The API validates its environment with Zod at startup and fails loudly instead
+of booting half-configured; the web app does the same for `import.meta.env`.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | — | Required. PostgreSQL connection string used by Prisma. |
+| `DATABASE_URL_TEST` | `…/stockspace_test` on `:5433` | Separate database for API integration tests. |
+| `BETTER_AUTH_SECRET` | dev-only placeholder | **Required in production** (≥ 32 chars). `openssl rand -base64 32`. |
+| `BETTER_AUTH_URL` | `http://localhost:4000` | Public API origin; session cookies are bound to it. |
+| `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated list of allowed web origins. |
+| `PORT` | `4000` | API port. |
+| `LOG_LEVEL` | `info` | `fatal` · `error` · `warn` · `info` · `debug` |
+| `VITE_API_URL` | `http://localhost:4000` | Web build-time API base URL. |
+
+`.env.example` and `apps/web/.env.example` contain placeholders only — real
+secrets are never committed.
+
+## Docker
 
 ```bash
 docker compose up --build   # web on :8080, API on :4000, PostgreSQL on :5433
 ```
 
-The API applies migrations on boot (`prisma migrate deploy`). The Pages demo
-serves an in-memory sample dataset instead (see `.github/workflows/deploy-pages.yml`).
-For production, set a real `BETTER_AUTH_SECRET` — see
-[Production deployment (VPS)](#production-deployment-vps).
+The API container applies migrations on boot (`prisma migrate deploy`). The
+GitHub Pages demo serves an in-memory sample dataset instead (see
+`.github/workflows/deploy-pages.yml`). For production, set a real
+`BETTER_AUTH_SECRET` — see
+[Production deployment](#production-deployment-vps).
 
 ## Architecture
 
@@ -211,38 +272,71 @@ PostgreSQL 16 ← Prisma → Fastify API (/api/*) → TanStack Query → React p
   (`@fontsource-variable/plus-jakarta-sans`, OFL).
 - **Data flow.** TanStack Query fetches workspace, layout, products, movements,
   dashboard summary, and notifications from the API. Mutations invalidate the
-  affected query keys, so balances, history, dashboard metrics, and the 3D
-  scene refresh together. The fictional dataset in `apps/web/src/mocks/` feeds
-  the static Pages demo (`api/demo-api.ts`) and the test fetch stub; the real
-  API path never imports it.
+  affected query keys, so balances, history, dashboard metrics, and the 3D scene
+  refresh together. The fictional dataset in `apps/web/src/mocks/` feeds the
+  static Pages demo (`api/demo-api.ts`) and the test fetch stub; the real API
+  path never imports it.
 - **API and database.** Fastify (ESM, `NodeNext`) with Zod validation on every
   external input; PostgreSQL 16 + Prisma. Stock changes run in Prisma
   interactive transactions; decrements use conditional
   `UPDATE … WHERE quantity >= n`, which serializes concurrent writers and makes
   overselling impossible. Movements are append-only.
 - **Auth and roles.** better-auth with email/password credentials, scrypt
-  hashing, and HTTP-only cookie sessions. Every data route resolves the
-  session, the active workspace (`X-Workspace-Id`, with membership check), and
-  the required role: VIEWER read-only · STAFF records movements · ADMIN+ edits
-  products · OWNER manages the workspace. The movement actor is always the
-  session user.
+  hashing, and HTTP-only cookie sessions. Every data route resolves the session,
+  the active workspace (`X-Workspace-Id`, with membership check), and the
+  required role. The movement actor is always the session user.
 - **Bilingual UI and onboarding.** A zero-dependency gettext-style catalog
   (`apps/web/src/i18n`) uses Indonesian source strings as keys with graceful
-  English fallback; the active locale also drives `Intl` number/date formats.
-  The spotlight tour anchors to real UI elements via `data-tour` attributes and
-  can be replayed from Settings.
-- **Quality gates.** ESLint + Prettier + strict `tsc` + Vitest in CI: a web
-  job (unit/component tests with an API fetch stub), an API job running
-  integration tests against a real PostgreSQL service container, and a
-  Playwright job (smoke + axe accessibility scan). `main` stays green.
-- **Client configuration.** `apps/web/src/lib/env.ts` validates
-  `import.meta.env` with Zod at startup, so a misconfigured build fails loudly
-  instead of rendering a half-configured app.
+  English fallback; the active locale also drives `Intl` number/date formats. The
+  spotlight tour anchors to real UI elements via `data-tour` attributes and can
+  be replayed from Settings.
+- **Client configuration.** `apps/web/src/lib/env.ts` validates `import.meta.env`
+  with Zod at startup, so a misconfigured build fails loudly.
+
+### API surface
+
+All routes are under `/api` and require a session except `/api/health`. The
+active workspace is sent as `X-Workspace-Id` and checked against membership.
+
+| Group | Routes | Minimum role |
+| --- | --- | --- |
+| Health | `GET /health` | — |
+| Workspaces | `GET /workspaces` | member |
+| Dashboard | `GET /dashboard/summary` | VIEWER |
+| Products | `GET /products`, `GET /products/:id` | VIEWER |
+| | `POST /products`, `PATCH /products/:id`, `POST /products/import` | ADMIN |
+| Movements | `GET /stock-movements` | VIEWER |
+| | `POST /stock-movements/{stock-in,stock-out,transfer,adjustment}` | STAFF |
+| Warehouse | `GET /warehouses`, `GET /warehouses/:id/layout`, `GET /storage-locations/:id/inventory`, `GET /categories` | VIEWER |
+| Stocktakes | `GET /stocktakes`, `GET /stocktakes/:id` | VIEWER |
+| | `POST /stocktakes`, `POST /stocktakes/:id/{commit,cancel}` | STAFF |
+| Suppliers | `GET /suppliers` | VIEWER |
+| | `POST /suppliers`, `PATCH /suppliers/:id`, `DELETE /suppliers/:id` | ADMIN |
+| Members | `GET /members` | member |
+| | `POST /members`, `PATCH /members/:memberId`, `DELETE /members/:memberId` | ADMIN |
+| Notifications | `GET /notifications`, `PATCH /notifications/:id/read` | VIEWER |
+| Reports | `GET /reports/{low-stock,movements,restock}`, `GET /reports/export.csv` | VIEWER |
+
+Errors are typed and machine-readable — `{ "error": { "code": "…", "message": "…" } }`:
+
+| Status | Codes |
+| --- | --- |
+| `400` | `LOCATION_NOT_FOUND` (missing id), `INVALID_QUANTITY`, `INVALID_LEVEL`, `REASON_REQUIRED`, `SAME_SOURCE_AND_DESTINATION`, `STOCKTAKE_EMPTY` |
+| `401` | `UNAUTHORIZED` — no session, sign in again |
+| `403` | `NOT_A_MEMBER`, `ROLE_FORBIDDEN` |
+| `404` | `PRODUCT_NOT_FOUND`, `LOCATION_NOT_FOUND`, `WAREHOUSE_NOT_FOUND`, `MEMBER_NOT_FOUND`, `USER_NOT_FOUND`, `SUPPLIER_NOT_FOUND`, `NOTIFICATION_NOT_FOUND`, `STOCKTAKE_NOT_FOUND`, `STOCKTAKE_LINE_NOT_FOUND` |
+| `409` | `SKU_TAKEN`, `MEMBER_EXISTS`, `LAST_OWNER`, `SELF_ROLE_CHANGE`, `SELF_REMOVE`, `STOCKTAKE_CLOSED`, `CONFLICT` (Prisma `P2002`) |
+| `422` | `VALIDATION_FAILED` (Zod), `INSUFFICIENT_STOCK` |
+| `429` | `RATE_LIMITED` |
+
+Unhandled Prisma races map to `409 CONFLICT` (`P2002`, unique) or
+`404 NOT_FOUND` (`P2025`, missing record), so clients never see a raw `500` for
+a lost update.
 
 ## Database and consistency
 
-PostgreSQL 16 + Prisma. The schema lives in `prisma/schema.prisma`, migrations
-in `prisma/migrations/`, and the fictional seed in `prisma/seed.ts`.
+PostgreSQL 16 + Prisma. The schema lives in `prisma/schema.prisma`, migrations in
+`prisma/migrations/`, and the fictional seed in `prisma/seed.ts`.
 
 ```text
 Workspace 1─n WorkspaceMember n─1 User
@@ -250,6 +344,8 @@ Workspace 1─n Warehouse 1─n Zone 1─n StorageLocation
 Workspace 1─n Category 1─n Product
 Product 1─n InventoryBalance n─1 StorageLocation   ← current stock per location + level
 Workspace 1─n StockMovement (append-only)          ← every committed stock change
+Workspace 1─n Supplier 1─n Product
+Workspace 1─n Stocktake 1─n StocktakeLine
 Workspace 1─n Notification
 ```
 
@@ -260,30 +356,30 @@ Key choices:
 - **`InventoryBalance.quantity` is `Int` with `CHECK (quantity >= 0)`**.
   Conditional API updates are the primary enforcement; the constraint is the
   last line of defense.
-- **`StockMovement` is append-only.** Corrections are compensating
-  `ADJUSTMENT` movements; nothing edits or deletes history.
+- **`StockMovement` is append-only.** Corrections are compensating `ADJUSTMENT`
+  movements; nothing edits or deletes history.
 - Uniqueness is scoped per workspace: `Product(workspaceId, sku)`,
   `StorageLocation(warehouseId, code)`, `Category(workspaceId, name)`.
-- Layout coordinates (`x`, `z`, `rotation`, `levels`, `capacity`) are stored on
+- Layout coordinates (`x`, `z`, `rotation`, `levels`, `capacity`) live on
   `StorageLocation`; the 3D scene renders exclusively from these rows.
 
 **How stock stays consistent.** All four movement types run inside one Prisma
 interactive transaction: re-validate location/product → conditional decrement
-(`updateMany` with `quantity >= n`) → atomic upsert/increment of the
-destination → insert the movement record. A failure at any step rolls back the
-balance change. The integration suite fires parallel stock-outs against a
-small balance and asserts that exactly the available units are consumed;
-overselling returns `422 INSUFFICIENT_STOCK` and writes nothing.
+(`updateMany` with `quantity >= n`) → atomic upsert/increment of the destination
+→ insert the movement record. A failure at any step rolls back the balance
+change. The integration suite fires parallel stock-outs against a small balance
+and asserts that exactly the available units are consumed; overselling returns
+`422 INSUFFICIENT_STOCK` and writes nothing.
 
 **Inventory value** is cost-price valuation:
-`Σ over balances (quantity × product.costPrice)`, computed from persisted rows
-in `GET /api/dashboard/summary`.
+`Σ over balances (quantity × product.costPrice)`, computed from persisted rows in
+`GET /api/dashboard/summary`.
 
-**Backups.** Schedule `pg_dump` via cron, copy the archive off-box
-(rclone/S3), and test restores regularly — a backup that lives only on the
-server is not a backup.
+**Backups.** Schedule `pg_dump` via cron, copy the archive off-box (rclone/S3),
+and test restores regularly — a backup that lives only on the server is not a
+backup.
 
-## 3D warehouse internals
+## 3D warehouse
 
 ```text
 StorageLocation rows (x, z, rotation, type, capacity)
@@ -292,34 +388,40 @@ StorageLocation rows (x, z, rotation, type, capacity)
       → WarehouseScene (React Three Fiber)
 ```
 
+### Interactions
+
+| Action | Result |
+| --- | --- |
+| Drag / scroll | Orbit, pan, and zoom (OrbitControls) |
+| Click a rack or area | Fly-to focus, other racks dim, detail panel opens |
+| Click a cargo box | Toggles a pulsing highlight ring (the click still bubbles, so the rack stays selected) |
+| Hover box / forklift | Subtle float + glow, and a status pill on the forklift |
+| 3D / 2D toggle | 2D locks rotation into a top-down layout view |
+| L1–L3 filter | Shows only the selected shelf level's boxes |
+| Zoom ±, reset, fullscreen | Camera dolly, preset restore, Fullscreen API |
+| Daftar lokasi | Accessible list overlay (also the automatic fallback) |
+
+### Rendering
+
 - **Procedural geometry only.** Racks (uprights + shelf boards), cargo boxes,
-  staging/packing platforms, and the warehouse shell (walls, high windows, roof
-  beams, dock door, floor markings, pallets, bollards, cones, extinguisher,
-  ceiling lights) are generated in code. There are **no external 3D assets** to
-  license.
-- **Living scene.** Four low-poly NPCs — two perimeter walkers on fixed
-  waypoint loops and two stationary workers near packing/staging — animate with
-  eased turns, a natural walk cadence, and grounded blob shadows. Fixed loops
-  replace dynamic pathfinding, so NPCs never force the forklift to replan.
-  Under reduced motion they hold a static pose.
+  staging/packing platforms, and the warehouse shell are generated in code.
+  There are **no external 3D assets** to license.
 - **Deterministic cargo.** Boxes per shelf row follow the balance quantity
   (`≥ 200 → 3`, `≥ 40 → 2`, else 1), so the scene is stable across reloads.
 - **Status colours.** Terisi (green) · Menipis (red, any product below its
-  reorder threshold) · Kosong (grey). Colour is never the only signal: the
-  same status appears in the location list, tooltips, and detail panel.
-- **Focus mode.** Selecting a location glides the camera to a computed view of
-  it; other racks render translucent so the selected one stays legible.
+  reorder threshold) · Kosong (grey). Colour is never the only signal: the same
+  status appears in the location list, tooltips, and the detail panel.
 
 ### Delivery animation
 
 A saved movement emits a `MovementEvent`; the scene queues it and drives one
 forklift trip at a time. Routes are planned against the **live layout**: rack,
-staging, and packing footprints are inflated by the forklift body clearance, an
-A* pass finds a collision-free path across the floor, line-of-sight
+staging, and packing footprints are inflated by the forklift body clearance
+(`0.62`), an A\* pass finds a collision-free path across the floor, line-of-sight
 simplification removes grid stair-steps, and quadratic fillets round every
 corner. The planner tightens the fillet radius until the arc still respects a
-`0.52` safety clearance, so the loaded forklift never cuts through an object
-even when locations move in the database.
+`0.34` safety clearance, so the loaded forklift never cuts through an object even
+when locations move in the database.
 
 | Phase | Motion |
 | --- | --- |
@@ -329,10 +431,6 @@ even when locations move in the database.
 | Carry | Planned route to the destination pre-dock, with velocity-based easing (accelerate, cruise, brake), smooth steering, and a small speed-scaled suspension bob |
 | Place | Box slides off the tines, gravity drop with squash-and-stretch and a landing flash, then the glow fades |
 | Reverse + return | Backs clear of the destination, pivots in the open aisle, then takes a planned route back to the parking spot |
-
-**Inbound crate:** a stock-in from the receiving area shows a kraft crate
-waiting on the staging platform before the forklift arrives. It is the box the
-machine collects; it disappears under the forks as the lift begins.
 
 Feedback layered on top: trail particles from an object pool, a heading
 indicator cone, an amber→red proximity ring when a rack is within 1.5 units
@@ -346,33 +444,34 @@ still recorded, just not animated.
   `SceneErrorBoundary`) → the accessible location list replaces the canvas;
   every feature stays reachable.
 - `dpr` capped at 2, one shadow-casting light, a single 1024² shadow map, and
-  ~40 low-poly meshes — comfortable on integrated graphics.
+  low-poly procedural meshes — comfortable on integrated graphics.
 - Distant cargo boxes drop out of the shadow pass (LOD) but stay visible, so
-  zooming out never makes a stocked rack look empty. Trail particles come from
-  a fixed-size pool and are gated behind reduced-motion.
-- Movements invalidate the layout query, so balances and status dots update
-  without a manual refresh.
-- Shadows use the percentage-closer filter (`PCFShadowMap`) explicitly:
-  three.js removed `PCFSoftShadowMap`, which react-three-fiber still mapped the
-  plain `shadows` prop to. One console warning remains and is owned by the
-  library: react-three-fiber instantiates `THREE.Clock`, which three.js has
-  deprecated in favour of `THREE.Timer`; it is harmless and disappears once
-  the renderer updates upstream.
+  zooming out never makes a stocked rack look empty. Trail particles come from a
+  fixed-size pool and are gated behind reduced-motion.
+- Per-frame React state updates are gated behind an active job, so the idle scene
+  does not re-render at 60 fps.
+- Shadows use the percentage-closer filter (`PCFShadowMap`) explicitly: three.js
+  removed `PCFSoftShadowMap`, which react-three-fiber still mapped the plain
+  `shadows` prop to. One console warning remains and is owned by the library:
+  react-three-fiber instantiates `THREE.Clock`, which three.js deprecated in
+  favour of `THREE.Timer`; it is harmless and disappears once the renderer
+  updates upstream.
 
 ## Testing and quality gates
 
 ```bash
+npm run format:check # Prettier
 npm run lint         # ESLint (web + api)
 npm run typecheck    # tsc (strict)
 npm run test         # Vitest — web unit/component + API integration (real PostgreSQL)
 npm run build        # production build (web + api)
-npm run format:check # Prettier
 npm run test:e2e -w apps/web   # Playwright smoke + axe a11y scan
-                              # (boots API + web automatically, seeds stockspace_e2e)
+                               # (boots API + web automatically, seeds stockspace_e2e)
 ```
 
 CI runs the same gates in three jobs — `web`, `api` (PostgreSQL service
-container), and `e2e` (PostgreSQL + chromium).
+container), and `e2e` (PostgreSQL + chromium) — plus a Pages deployment from
+`main`. `main` stays green.
 
 ## Production deployment (VPS)
 
@@ -393,11 +492,10 @@ minutes.
    CORS_ORIGIN=https://inventory.example.com
    ```
 
-   Change the default PostgreSQL password in both `.env` and
-   `docker-compose.yml` (or an override file). Put Caddy/nginx in front for
-   TLS; `BETTER_AUTH_URL` and `CORS_ORIGIN` must match the public origin
-   because session cookies are bound to it.
-
+   Change the default PostgreSQL password in both `.env` and `docker-compose.yml`
+   (or an override file). Put Caddy/nginx in front for TLS; `BETTER_AUTH_URL` and
+   `CORS_ORIGIN` must match the public origin because session cookies are bound
+   to it.
 4. **Start the stack:** `docker compose up -d --build`. The API runs
    `prisma migrate deploy` before boot; verify `http://localhost:8080` and
    `docker compose ps`.
@@ -418,14 +516,16 @@ minutes.
 
 ```text
 stockspace/
-├── apps/web/          # React frontend (3D warehouse, dashboards, forms, e2e specs)
-├── apps/api/          # Fastify REST API (auth, movements, reports)
-├── prisma/            # Schema, migrations, fictional seed
-├── docs/screenshots/  # README media only
-├── .github/           # CI, issue/PR templates, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT
-├── docker/            # PostgreSQL init scripts
+├── apps/web/            # React frontend (3D warehouse, dashboards, forms, e2e specs)
+├── apps/api/            # Fastify REST API (auth, movements, reports, stocktakes)
+├── prisma/              # Schema, migrations, fictional seed
+├── docs/
+│   ├── brand/           # Official logo (SVG + PNG)
+│   └── screenshots/     # README media only
+├── .github/             # CI, Pages deploy, issue/PR templates, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT
+├── docker/              # PostgreSQL init scripts
 ├── docker-compose.yml
-└── README.md          # product, architecture, database, 3D, deployment docs
+└── README.md            # product, architecture, database, 3D, deployment docs
 ```
 
 The README is the single source of truth for product and technical
@@ -448,20 +548,19 @@ stays focused.
 - [x] Post-MVP 3D pass — living warehouse set dressing, NPC workers, fly-to focus
 - [x] Post-MVP features — workspace member management, admin product CRUD
 
-**Ideas beyond the MVP:** pending email invitations (needs a mail provider and
-an invite model), multi-warehouse layouts, and smarter 3D navigation (location
+**Ideas beyond the MVP:** pending email invitations (needs a mail provider and an
+invite model), multi-warehouse layouts, and smarter 3D navigation (location
 search, occupancy heatmap, route preview).
 
 ## Contributing
 
 Contributions are welcome. Read [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md)
-for setup, branch/commit conventions, code style, and the pull-request
-checklist.
+for setup, branch/commit conventions, code style, and the pull-request checklist.
 
-- UI strings go through the i18n catalog (`apps/web/src/i18n`) — add the
-  English entry when introducing new copy.
-- Keep 3D geometry procedural/original, respect reduced motion, and preserve
-  the WebGL fallback.
+- UI strings go through the i18n catalog (`apps/web/src/i18n`) — add the English
+  entry when introducing new copy.
+- Keep 3D geometry procedural/original, respect reduced motion, and preserve the
+  WebGL fallback.
 - Security reports follow [`.github/SECURITY.md`](.github/SECURITY.md) — use
   GitHub's private vulnerability reporting, not a public issue.
 - By participating you agree to the
