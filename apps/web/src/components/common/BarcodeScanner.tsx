@@ -25,18 +25,17 @@ export function BarcodeScanner({
   const [error, setError] = useState<string | null>(null)
   const [detected, setDetected] = useState<string | null>(null)
 
-  // Render-time capability check — avoids setState inside the camera effect.
-  const Detector = (
-    window as unknown as {
-      BarcodeDetector?: new (options?: { formats: string[] }) => {
-        detect: (source: HTMLVideoElement) => Promise<DetectedBarcode[]>
-      }
-    }
-  ).BarcodeDetector
-  const unsupported = !Detector || !navigator.mediaDevices?.getUserMedia
-
   useEffect(() => {
-    if (unsupported) return
+    // Capability check inside the effect (no setState) so the dependency array
+    // stays limited to the callback and the translator.
+    const Detector = (
+      window as unknown as {
+        BarcodeDetector?: new (options?: { formats: string[] }) => {
+          detect: (source: HTMLVideoElement) => Promise<DetectedBarcode[]>
+        }
+      }
+    ).BarcodeDetector
+    if (!Detector || !navigator.mediaDevices?.getUserMedia) return
 
     let cancelled = false
     let stream: MediaStream | null = null
